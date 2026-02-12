@@ -75,6 +75,8 @@ fn main() -> process::ExitCode {
         }
     }
 
+    print_banner();
+
     let gpio = match Gpio::new() {
         Ok(g) => g,
         Err(e) => {
@@ -178,4 +180,10 @@ fn main() -> process::ExitCode {
 
         thread::sleep(settings.poll_interval);
     }
+}
+
+/// Prints the program banner with version information.
+fn print_banner() {
+    let banner = format!("{} {}", defaults::PROGRAM_NAME, defaults::VERSION);
+    println!("{}\n{}\n", banner, "=".repeat(banner.len()));
 }
