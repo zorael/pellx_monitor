@@ -1,8 +1,9 @@
 use clap::Parser;
 use humantime;
+use humantime_serde;
 use reqwest::blocking::Client;
 use rppal::gpio::{Gpio, Level};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{env, fs, thread, process, path::PathBuf, time};
 use std::time::{Duration, Instant};
 
@@ -11,12 +12,12 @@ const DEFAULT_POLL_INTERVAL: Duration = Duration::from_secs(1);
 const DEFAULT_QUALIFY_HIGH: Duration = Duration::from_secs(10);
 const DEFAULT_TIME_BETWEEN_MAILS: Duration = Duration::from_secs(30 * 60);  // 30 min
 const DEFAULT_TIME_BETWEEN_MAILS_RETRY: Duration = Duration::from_secs(5 * 60);  // 5 min
+const DEFAULT_SUBJECT: &'static str = "PellX Alarm";
 const VERSION: &'static str = concat!("v", env!("CARGO_PKG_VERSION"), "-alpha.01");
 const ABOUT: &'static str = "pellX monitor\n$ git clone https://github.com/zorael/pellx_monitor";
 
 /// Application settings, including defaults and sanity checks.
 #[derive(Clone)]
-#[derive(serde::Serialize)]
 struct Settings {
     pin_number: u8,
     poll_interval: Duration,
@@ -38,7 +39,7 @@ impl Default for Settings {
             time_between_mails: DEFAULT_TIME_BETWEEN_MAILS,
             time_between_mails_retry: DEFAULT_TIME_BETWEEN_MAILS_RETRY,
             batsign_url: None,
-            batsign_subject: None,
+            batsign_subject: Some(DEFAULT_SUBJECT.to_string()),
             config_path: None,
         }
     }
@@ -47,7 +48,7 @@ impl Default for Settings {
 /// Sanity check settings, returning a list of errors if any are found.
 impl Settings {
     fn sanity_check(&self) -> Result<(), Vec<String>> {
-        let mut vec: Vec<String> = Vec::new();
+        let mut vec = Vec::new();
 
         if self.pin_number > 27 {
             vec.push(format!("Invalid GPIO pin number: {}. Must be between 0 and 27.", self.pin_number));
@@ -65,18 +66,18 @@ impl Settings {
             vec.push("Time between mails retry must be greater than zero.".to_string());
         }
 
-        if let Some(url) = &self.batsign_url {
-            if url.trim().is_empty() {
-                vec.push("Batsign URL cannot be empty.".to_string());
-            } else if !url.starts_with("http://") && !url.starts_with("https://") {
-                vec.push("Batsign URL must start with http:// or https://.".to_string());
-            }
+        match self.batsign_url.as_deref().map(str::trim) {
+            Some(url) if url.is_empty() => vec.push("Batsign URL cannot be empty.".to_string()),
+            Some(url) if !url.starts_with("http://") && !url.starts_with("https://") =>
+                vec.push("Batsign URL must start with http:// or https://.".to_string()),
+            None => vec.push("Batsign URL is required.".to_string()),
+            _ => {}
         }
 
-        if let Some(subject) = &self.batsign_subject {
-            if subject.trim().is_empty() {
-                vec.push("Batsign subject cannot be empty.".to_string());
-            }
+        match self.batsign_subject.as_deref().map(str::trim) {
+            Some(subject) if subject.is_empty() => vec.push("Batsign subject cannot be empty.".to_string()),
+            None => vec.push("Batsign subject is required.".to_string()),
+            _ => {}
         }
 
         if vec.is_empty() {
@@ -88,7 +89,7 @@ impl Settings {
 }
 
 /// Command-line arguments, which override config file settings.
-#[derive(Parser)]
+#[derive(Parser, Clone)]
 #[command(name = "pellx_monitor")]
 #[command(author = "jr <zorael@gmail.com>")]
 #[command(version = VERSION)]
@@ -125,15 +126,17 @@ struct Cli {
     /// Override path to configuration file
     #[arg(short = 'c', long)]
     config: Option<PathBuf>,
+
+    /// Write the resolved configuration (defaults + config file + CLI) to disk and exit
+    #[arg(long)]
+    save: bool,
 }
 
 /// Configuration file structure, which overrides default settings and is overridden by CLI args.
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 struct FileConfig {
     batsign_url: Option<String>,
-
     batsign_subject: Option<String>,
-
     pin_number: Option<u8>,
 
     #[serde(with = "humantime_serde")]
@@ -147,6 +150,20 @@ struct FileConfig {
 
     #[serde(with = "humantime_serde")]
     time_between_mails_retry: Option<time::Duration>,
+}
+
+impl From<&Settings> for FileConfig {
+    fn from(s: &Settings) -> Self {
+        Self {
+            batsign_url: s.batsign_url.clone(),
+            batsign_subject: s.batsign_subject.clone(),
+            pin_number: Some(s.pin_number),
+            poll_interval: Some(s.poll_interval),
+            qualify_high: Some(s.qualify_high),
+            time_between_mails: Some(s.time_between_mails),
+            time_between_mails_retry: Some(s.time_between_mails_retry),
+        }
+    }
 }
 
 /// Resolves the default config path according to XDG Base Directory Specification.
@@ -172,6 +189,23 @@ fn read_config_file(path: &PathBuf) -> Result<FileConfig, String> {
         .map_err(|e| format!("failed to parse TOML `{}`: {e}", path.display()))
 }
 
+fn save_config(path: &PathBuf, settings: &Settings) -> Result<(), String> {
+    let cfg = FileConfig::from(settings);
+    let toml = toml::to_string_pretty(&cfg)
+        .map_err(|e| format!("failed to serialize config: {e}"))?;
+
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("failed to create config dir `{}`: {e}", parent.display()))?;
+    }
+
+    fs::write(path, toml)
+        .map_err(|e| format!("failed to write config `{}`: {e}", path.display()))?;
+
+    Ok(())
+}
+
+
 /// Applies config file settings to the default settings, returning the resulting settings.
 fn apply_file(mut s: Settings, f: FileConfig) -> Settings {
     if let Some(pin_number) = f.pin_number { s.pin_number = pin_number; }
@@ -179,8 +213,8 @@ fn apply_file(mut s: Settings, f: FileConfig) -> Settings {
     if let Some(qualify_high) = f.qualify_high { s.qualify_high = qualify_high; }
     if let Some(time_between_mails) = f.time_between_mails { s.time_between_mails = time_between_mails; }
     if let Some(time_between_mails_retry) = f.time_between_mails_retry { s.time_between_mails_retry = time_between_mails_retry; }
-    if let Some(_) = f.batsign_url { s.batsign_url = f.batsign_url; }
-    if let Some(_) = f.batsign_subject { s.batsign_subject = f.batsign_subject; }
+    if f.batsign_url.is_some() { s.batsign_url = f.batsign_url; }
+    if f.batsign_subject.is_some() { s.batsign_subject = f.batsign_subject; }
     s
 }
 
@@ -191,8 +225,8 @@ fn apply_cli(mut s: Settings, c: Cli) -> Settings {
     if let Some(qualify_high) = c.qualify_high { s.qualify_high = qualify_high; }
     if let Some(time_between_mails) = c.time_between_mails { s.time_between_mails = time_between_mails; }
     if let Some(time_between_mails_retry) = c.time_between_mails_retry { s.time_between_mails_retry = time_between_mails_retry; }
-    if let Some(_) = c.batsign_url { s.batsign_url = c.batsign_url; }
-    if let Some(_) = c.batsign_subject { s.batsign_subject = c.batsign_subject; }
+    if c.batsign_url.is_some() { s.batsign_url = c.batsign_url; }
+    if c.batsign_subject.is_some() { s.batsign_subject = c.batsign_subject; }
     s
 }
 
@@ -201,13 +235,10 @@ fn main() -> process::ExitCode {
     let cli = Cli::parse();
     let mut settings = Settings::default();
 
-    match &cli.config {
-        Some(_) => settings.config_path = cli.config.clone(),
-        None => settings.config_path = resolve_default_config_path(),
-    };
+    settings.config_path = cli.config.clone().or_else(resolve_default_config_path);
 
-    match &settings.config_path {
-        Some(path) if path.exists() => {
+    if let Some(path) = &settings.config_path {
+        if path.exists() {
             match read_config_file(&path) {
                 Ok(f) => settings = apply_file(settings, f),
                 Err(e) => {
@@ -215,31 +246,68 @@ fn main() -> process::ExitCode {
                     return process::ExitCode::FAILURE;
                 }
             }
-        },
-        Some(path) => {
-            eprintln!("Config file not found at `{:?}`.", path);
-            return process::ExitCode::FAILURE;
-        }
-        None => {
-            eprintln!("Could not resolve config path.");
+        } else if cli.config.is_some() {
+            eprintln!("Config file not found at {:?}.", path);
             return process::ExitCode::FAILURE;
         }
     }
 
-    settings = apply_cli(settings, cli);
+    settings = apply_cli(settings, cli.clone());
 
-    settings.sanity_check().unwrap_or_else(|errors| {
+    if let Err(vec) = settings.sanity_check() {
         eprintln!("Configuration errors:");
 
-        for error in errors {
+        for error in vec {
             eprintln!("* {error}");
         }
 
-        process::exit(1);
-    });
+        return process::ExitCode::FAILURE;
+    }
 
-    let gpio = Gpio::new().expect("GPIO init");
-    let pin = gpio.get(settings.pin_number).expect("GPIO pin get").into_input_pullup();
+    if cli.save {
+        let path = settings
+            .config_path
+            .clone()
+            .ok_or_else(|| "could not resolve config path".to_string());
+
+        let path = match path {
+            Ok(p) => p,
+            Err(e) => {
+                eprintln!("error: {e}");
+                return process::ExitCode::FAILURE;
+            }
+        };
+
+        match save_config(&path, &settings) {
+            Ok(()) => {
+                println!("Wrote config to {}", path.display());
+                return process::ExitCode::SUCCESS;
+            }
+            Err(e) => {
+                eprintln!("error: {e}");
+                return process::ExitCode::FAILURE;
+            }
+        }
+    }
+
+    let gpio = match Gpio::new() {
+        Ok(g) => g,
+        Err(e) => {
+            eprintln!("error: failed to initialize GPIO (rppal): {e}");
+            return process::ExitCode::FAILURE;
+        }
+    };
+
+    let pin = match gpio.get(settings.pin_number) {
+        Ok(p) => p.into_input_pullup(),
+        Err(e) => {
+            eprintln!("error: failed to access GPIO{}: {e}", settings.pin_number);
+            return process::ExitCode::FAILURE;
+        }
+    };
+
+    let batsign_message = get_batsign_message(settings.batsign_subject.as_deref().unwrap());
+    let batsign_url = settings.batsign_url.as_deref().unwrap();
     let client = Client::new();
 
     let mut high_since: Option<Instant> = None;
@@ -252,7 +320,7 @@ fn main() -> process::ExitCode {
     println!("Poll interval:      {}", humantime::format_duration(settings.poll_interval));
     println!("Qualify HIGH:       {}", humantime::format_duration(settings.qualify_high));
     println!("Time between mails: {}", humantime::format_duration(settings.time_between_mails));
-    println!("Batsign URL:        {}", &settings.batsign_url.as_ref().unwrap());
+    println!("Batsign URL:        {}", batsign_url);
 
     loop {
         match pin.read() {
@@ -282,11 +350,10 @@ fn main() -> process::ExitCode {
                     printed_alarm = true;
                 }
 
-                if should_send_mail(last_mail, last_failed_mail, settings.time_between_mails, settings.time_between_mails_retry) {
-                    let now = Instant::now();
-                    let message = get_batsign_message(&settings.batsign_subject.as_ref().unwrap(), &high_since);
+                let now = Instant::now();
 
-                    match send_batsign(&client, settings.batsign_url.as_ref().unwrap(), message) {
+                if should_send_mail(now, last_mail, last_failed_mail, settings.time_between_mails, settings.time_between_mails_retry) {
+                    match send_batsign(&client, &batsign_url, &batsign_message) {
                         Ok(status) if status.is_success() => {
                             println!("Batsign sent; HTTP {status}");
                             last_mail = Some(now);
@@ -310,9 +377,13 @@ fn main() -> process::ExitCode {
 }
 
 /// Determines if a mail should be sent, based on the last successful and failed mail times.
-fn should_send_mail(last: Option<Instant>, last_failed: Option<Instant>, time_between_mails: Duration, time_between_mails_retry: Duration) -> bool {
-    let now = Instant::now();
-
+fn should_send_mail(
+    now: Instant,
+    last: Option<Instant>,
+    last_failed: Option<Instant>,
+    time_between_mails: Duration,
+    time_between_mails_retry: Duration
+) -> bool {
     if let Some(last_failed) = last_failed {
         return now.duration_since(last_failed) >= time_between_mails_retry;
     }
@@ -325,15 +396,12 @@ fn should_send_mail(last: Option<Instant>, last_failed: Option<Instant>, time_be
 }
 
 /// Constructs the Batsign message body, including the subject and the time at which the pin went HIGH.
-fn get_batsign_message(subject: &String, high_since: &Option<Instant>) -> String {
-    format!("Subject: {}\n{:?}",
-        subject,
-        high_since.expect("high_since when getting batsign message"),
-    )
+fn get_batsign_message(subject: &str) -> String {
+    format!("Subject: {subject}\n")
 }
 
 /// Sends a batsign message to the specified URL, returning the HTTP status code or an error.
-fn send_batsign(client: &Client, url: &String, message: String) -> Result<reqwest::StatusCode, reqwest::Error> {
-    let res = client.post(url).body(message).send()?;
+fn send_batsign(client: &Client, url: &str, message: &str) -> Result<reqwest::StatusCode, reqwest::Error> {
+    let res = client.post(url).body(message.to_owned()).send()?;
     Ok(res.status())
 }
