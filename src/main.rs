@@ -7,13 +7,13 @@ mod settings;
 use clap::Parser;
 use reqwest::blocking::Client;
 use rppal::gpio::{Gpio, Level};
-use std::{thread, process};
 use std::time::Instant;
+use std::{process, thread};
 
 use crate::batsign::{get_batsign_message, send_batsign, should_send_batsign};
 use crate::cli::Cli;
 use crate::config::{read_config_file, resolve_default_config_path, save_config};
-use crate::settings::{apply_cli, apply_file, Settings};
+use crate::settings::{Settings, apply_cli, apply_file};
 
 /// Program entrypoint.
 fn main() -> process::ExitCode {
@@ -102,9 +102,18 @@ fn main() -> process::ExitCode {
 
     println!("PellX monitor starting...");
     println!("GPIO pin number:    {}", settings.pin_number);
-    println!("Poll interval:      {}", humantime::format_duration(settings.poll_interval));
-    println!("Qualify HIGH:       {}", humantime::format_duration(settings.qualify_high));
-    println!("Time between mails: {}", humantime::format_duration(settings.time_between_mails));
+    println!(
+        "Poll interval:      {}",
+        humantime::format_duration(settings.poll_interval)
+    );
+    println!(
+        "Qualify HIGH:       {}",
+        humantime::format_duration(settings.qualify_high)
+    );
+    println!(
+        "Time between mails: {}",
+        humantime::format_duration(settings.time_between_mails)
+    );
     println!("Batsign URL:        {}", batsign_url);
 
     loop {
@@ -119,7 +128,7 @@ fn main() -> process::ExitCode {
                 high_since = None;
                 last_batsign = None;
                 last_failed_batsign = None;
-            },
+            }
             Level::High => {
                 // ALARM (open): internal pull-up pulls to HIGH
                 let start = high_since.get_or_insert_with(Instant::now);
@@ -132,30 +141,39 @@ fn main() -> process::ExitCode {
 
                 if !printed_alarm {
                     // Print alarm only once
-                    println!("ALARM qualified: HIGH i >= {}.", humantime::format_duration(settings.qualify_high));
+                    println!(
+                        "ALARM qualified: HIGH i >= {}.",
+                        humantime::format_duration(settings.qualify_high)
+                    );
                     printed_alarm = true;
                 }
 
                 let now = Instant::now();
 
-                if should_send_batsign(now, last_batsign, last_failed_batsign, settings.time_between_mails, settings.time_between_mails_retry) {
+                if should_send_batsign(
+                    now,
+                    last_batsign,
+                    last_failed_batsign,
+                    settings.time_between_mails,
+                    settings.time_between_mails_retry,
+                ) {
                     match send_batsign(&client, &batsign_url, &batsign_message) {
                         Ok(status) if status.is_success() => {
                             println!("Batsign sent; HTTP {status}");
                             last_batsign = Some(now);
                             last_failed_batsign = None;
-                        },
+                        }
                         Ok(status) => {
                             eprintln!("Batsign returned error; HTTP {status}");
                             last_failed_batsign = Some(now);
-                        },
+                        }
                         Err(e) => {
                             eprintln!("Could not reach Batsign: {e}");
                             last_failed_batsign = Some(now);
                         }
                     }
                 }
-            },
+            }
         }
 
         thread::sleep(settings.poll_interval);

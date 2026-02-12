@@ -1,27 +1,36 @@
+use humantime_serde;
 use serde::{Deserialize, Serialize};
-use std::{env, fs};
 use std::path::PathBuf;
 use std::time;
-use humantime_serde;
+use std::{env, fs};
 
 use crate::settings::Settings;
 
 /// Configuration file structure, which overrides default settings and is overridden by CLI args.
 #[derive(Serialize, Deserialize)]
 pub struct FileConfig {
+    /// Batsign URL to send the alert to.
     pub batsign_url: Option<String>,
+
+    /// Subject line for the Batsign message.
     pub batsign_subject: Option<String>,
+
+    /// GPIO pin number to monitor.
     pub pin_number: Option<u8>,
 
+    /// Poll interval for checking the GPIO pin.
     #[serde(with = "humantime_serde")]
     pub poll_interval: Option<time::Duration>,
 
+    /// Duration the pin must be HIGH before qualifying as an alarm.
     #[serde(with = "humantime_serde")]
     pub qualify_high: Option<time::Duration>,
 
+    /// Minimum time between sending mails.
     #[serde(with = "humantime_serde")]
     pub time_between_mails: Option<time::Duration>,
 
+    /// Time to wait before retrying to send a mail after a failure.
     #[serde(with = "humantime_serde")]
     pub time_between_mails_retry: Option<time::Duration>,
 }
@@ -47,9 +56,7 @@ pub fn resolve_default_config_path() -> Option<PathBuf> {
         .or_else(|| env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))
         .unwrap_or_else(|| PathBuf::from("."));
 
-    let base = base
-        .join("pellx_monitor")
-        .join("config.toml");
+    let base = base.join("pellx_monitor").join("config.toml");
 
     Some(base)
 }
@@ -66,8 +73,8 @@ pub fn read_config_file(path: &PathBuf) -> Result<FileConfig, String> {
 /// Saves the resolved config to a TOML file, creating parent directories if necessary.
 pub fn save_config(path: &PathBuf, settings: &Settings) -> Result<(), String> {
     let cfg = FileConfig::from(settings);
-    let toml = toml::to_string_pretty(&cfg)
-        .map_err(|e| format!("failed to serialize config: {e}"))?;
+    let toml =
+        toml::to_string_pretty(&cfg).map_err(|e| format!("failed to serialize config: {e}"))?;
 
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)

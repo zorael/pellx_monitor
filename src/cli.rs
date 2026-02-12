@@ -23,11 +23,11 @@ pub struct Cli {
     #[arg(short = 'q', long, value_parser = humantime::parse_duration)]
     pub qualify_high: Option<Duration>,
 
-    /// Minimum time between sending mails
+    /// Minimum time between sending notification mails
     #[arg(short = 't', long, value_parser = humantime::parse_duration)]
     pub time_between_mails: Option<Duration>,
 
-    /// Time to wait before retrying to send a mail after a failure
+    /// Time to wait before retrying to send a notification mail after a failure
     #[arg(short = 'r', long, value_parser = humantime::parse_duration)]
     pub time_between_mails_retry: Option<Duration>,
 
