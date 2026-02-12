@@ -27,12 +27,12 @@ fn main() -> process::ExitCode {
             match read_config_file(path) {
                 Ok(f) => settings = apply_file(settings, f),
                 Err(e) => {
-                    eprintln!("{e}");
+                    eprintln!("[!] {e}");
                     return process::ExitCode::FAILURE;
                 }
             }
         } else if cli.config.is_some() {
-            eprintln!("Config file not found at {:?}.", path);
+            eprintln!("[!] Config file not found at {:?}.", path);
             return process::ExitCode::FAILURE;
         }
     }
@@ -40,10 +40,10 @@ fn main() -> process::ExitCode {
     settings = apply_cli(settings, cli.clone());
 
     if let Err(vec) = settings.sanity_check() {
-        eprintln!("Configuration errors:");
+        eprintln!("[!] Configuration errors:");
 
         for error in vec {
-            eprintln!("* {error}");
+            eprintln!("[!] {error}");
         }
 
         return process::ExitCode::FAILURE;
@@ -53,23 +53,23 @@ fn main() -> process::ExitCode {
         let path = settings
             .config_path
             .clone()
-            .ok_or_else(|| "could not resolve config path".to_string());
+            .ok_or_else(|| "[!] Failed to resolve configuration file path".to_string());
 
         let path = match path {
             Ok(p) => p,
             Err(e) => {
-                eprintln!("error: {e}");
+                eprintln!("[!] Failed to resolve configuration file path: {e}");
                 return process::ExitCode::FAILURE;
             }
         };
 
         match save_config(&path, &settings) {
             Ok(()) => {
-                println!("Wrote config to {}", path.display());
+                println!("Configuration file written to {}", path.display());
                 return process::ExitCode::SUCCESS;
             }
             Err(e) => {
-                eprintln!("error: {e}");
+                eprintln!("[!] Failed to write configuration to file: {e}");
                 return process::ExitCode::FAILURE;
             }
         }
@@ -78,7 +78,7 @@ fn main() -> process::ExitCode {
     let gpio = match Gpio::new() {
         Ok(g) => g,
         Err(e) => {
-            eprintln!("error: failed to initialize GPIO (rppal): {e}");
+            eprintln!("[!] Failed to initialize GPIO: {e}");
             return process::ExitCode::FAILURE;
         }
     };
@@ -86,7 +86,7 @@ fn main() -> process::ExitCode {
     let pin = match gpio.get(settings.pin_number) {
         Ok(p) => p.into_input_pullup(),
         Err(e) => {
-            eprintln!("error: failed to access GPIO{}: {e}", settings.pin_number);
+            eprintln!("[!] Failed to access GPIO{}: {e}", settings.pin_number);
             return process::ExitCode::FAILURE;
         }
     };
@@ -142,7 +142,7 @@ fn main() -> process::ExitCode {
                 if !printed_alarm {
                     // Print alarm only once
                     println!(
-                        "ALARM qualified: HIGH i >= {}.",
+                        "[!] ALARM: Pin has been HIGH for >= {}.",
                         humantime::format_duration(settings.qualify_high)
                     );
                     printed_alarm = true;
@@ -164,11 +164,11 @@ fn main() -> process::ExitCode {
                             last_failed_batsign = None;
                         }
                         Ok(status) => {
-                            eprintln!("Batsign returned error; HTTP {status}");
+                            eprintln!("[!] Batsign returned error; HTTP {status}");
                             last_failed_batsign = Some(now);
                         }
                         Err(e) => {
-                            eprintln!("Could not reach Batsign: {e}");
+                            eprintln!("[!] Could not reach Batsign: {e}");
                             last_failed_batsign = Some(now);
                         }
                     }
