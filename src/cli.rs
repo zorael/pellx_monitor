@@ -7,8 +7,9 @@ use crate::defaults;
 
 /// Command-line arguments, which override config file settings.
 #[derive(Parser, Clone)]
-#[command(author = defaults::AUTHOR)]
+#[command(name = defaults::PROGRAM_NAME)]
 #[command(version = defaults::VERSION)]
+#[command(author = defaults::AUTHOR)]
 #[command(about = defaults::ABOUT)]
 pub struct Cli {
     /// GPIO pin number to monitor

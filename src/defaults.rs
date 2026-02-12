@@ -1,5 +1,7 @@
 use std::time::Duration;
 
+use constcat::concat;
+
 /// Default GPIO pin to use.
 pub const DEFAULT_PIN: u8 = 24; // GPIO24, physical pin 18 on Raspberry Pi
 
@@ -18,11 +20,22 @@ pub const DEFAULT_TIME_BETWEEN_MAILS_RETRY: Duration = Duration::from_secs(5 * 6
 /// Default subject line for the Batsign message.
 pub const DEFAULT_SUBJECT: &'static str = "PellX Alarm";
 
+/// Program name string.
+pub const PROGRAM_NAME: &'static str = "PellX Monitor";
+
 /// Author string.
-pub const AUTHOR: &str = "jr <zorael@gmail.com>";
+pub const AUTHOR: &'static str = "jr <zorael@gmail.com>";
+
+/// Semantic version patch string.
+pub const SEMVER_PATCH: &'static str = "-alpha.01";
 
 /// Version string, automatically derived from Cargo.toml.
-pub const VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"), "-alpha.01");
+pub const VERSION: &'static str = concat!("v", env!("CARGO_PKG_VERSION"), SEMVER_PATCH);
 
 /// About string, shown in CLI help.
-pub const ABOUT: &str = "pellX monitor\n$ git clone https://github.com/zorael/pellx_monitor";
+pub const ABOUT: &'static str = concat!(
+    PROGRAM_NAME,
+    " ",
+    VERSION,
+    "\n$ git clone https://github.com/zorael/pellx_monitor"
+);
