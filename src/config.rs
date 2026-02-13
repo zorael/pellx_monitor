@@ -1,5 +1,4 @@
 use confy::get_configuration_file_path;
-use humantime_serde;
 use serde::{Deserialize, Serialize};
 use std::time;
 

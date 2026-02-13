@@ -17,33 +17,32 @@ pub const DEFAULT_TIME_BETWEEN_BATSIGNS: Duration = Duration::from_secs(30 * 60)
 pub const DEFAULT_TIME_BETWEEN_BATSIGNS_RETRY: Duration = Duration::from_secs(5 * 60); // 5 min
 
 /// Default subject line for the Batsign message.
-pub const DEFAULT_ALARM_SUBJECT: &'static str = "PellX Alarm";
+pub const DEFAULT_ALARM_SUBJECT: &str = "PellX Alarm";
 
 /// Default message template for the Batsign message.
-pub const DEFAULT_ALARM_MESSAGE_TEMPLATE: &'static str =
+pub const DEFAULT_ALARM_MESSAGE_TEMPLATE: &str =
     "Triggered at {timestamp}. Pin has been HIGH for {duration}.";
 
 /// Default subject line for the Batsign message when the alarm is restored.
-pub const DEFAULT_RESTORED_SUBJECT: &'static str = "PellX Restored";
+pub const DEFAULT_RESTORED_SUBJECT: &str = "PellX Restored";
 
 /// Default message template for the Batsign message when the alarm is restored.
-pub const DEFAULT_RESTORED_MESSAGE_TEMPLATE: &'static str =
-    "Restored at {timestamp}. Pin is now LOW.";
+pub const DEFAULT_RESTORED_MESSAGE_TEMPLATE: &str = "Restored at {timestamp}. Pin is now LOW.";
 
 /// Program name string.
-pub const PROGRAM_NAME: &'static str = "PellX Monitor";
+pub const PROGRAM_NAME: &str = "PellX Monitor";
 
 /// Author string.
-pub const AUTHOR: &'static str = "jr <zorael@gmail.com>";
+pub const AUTHOR: &str = "jr <zorael@gmail.com>";
 
 /// Semantic version patch string.
-pub const SEMVER_PATCH: &'static str = "-alpha.01";
+pub const SEMVER_PATCH: &str = "-alpha.01";
 
 /// Version string, automatically derived from Cargo.toml.
-pub const VERSION: &'static str = concat!("v", env!("CARGO_PKG_VERSION"), SEMVER_PATCH);
+pub const VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"), SEMVER_PATCH);
 
 /// About string, shown in CLI help.
-pub const ABOUT: &'static str = concat!(
+pub const ABOUT: &str = concat!(
     PROGRAM_NAME,
     " ",
     VERSION,

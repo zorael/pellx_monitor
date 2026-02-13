@@ -1,5 +1,4 @@
 use clap::Parser;
-use humantime;
 use std::time::Duration;
 
 use crate::defaults;

@@ -127,7 +127,7 @@ fn main() -> process::ExitCode {
                         continue;
                     }
 
-                    match batsign::send_batsign(&client, &batsign_url, &batsign_restored_message) {
+                    match batsign::send_batsign(&client, batsign_url, &batsign_restored_message) {
                         Ok(status) if status.is_success() => {
                             println!("Batsign sent; HTTP {status}");
                             last_restored_batsign = Some(now);
@@ -183,7 +183,7 @@ fn main() -> process::ExitCode {
                         continue;
                     }
 
-                    match batsign::send_batsign(&client, &batsign_url, &batsign_alarm_message) {
+                    match batsign::send_batsign(&client, batsign_url, &batsign_alarm_message) {
                         Ok(status) if status.is_success() => {
                             println!("Batsign sent; HTTP {status}");
                             last_alarm_batsign = Some(now);

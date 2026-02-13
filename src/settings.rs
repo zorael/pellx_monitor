@@ -85,7 +85,7 @@ impl Settings {
         }
 
         match self.batsign_url.as_deref().map(str::trim) {
-            Some(url) if url.is_empty() => vec.push("Batsign URL must not be empty.".to_string()),
+            Some("") => vec.push("Batsign URL must not be empty.".to_string()),
             Some(url) if !url.starts_with("http://") && !url.starts_with("https://") => {
                 vec.push("Batsign URL must start with http:// or https://.".to_string())
             }
@@ -94,17 +94,13 @@ impl Settings {
         }
 
         match self.batsign_alarm_subject.as_deref().map(str::trim) {
-            Some(subject) if subject.is_empty() => {
-                vec.push("Batsign alarm subject must not be empty.".to_string())
-            }
+            Some("") => vec.push("Batsign alarm subject must not be empty.".to_string()),
             None => vec.push("Batsign alarm subject is required.".to_string()),
             _ => {}
         }
 
         match self.batsign_restored_subject.as_deref().map(str::trim) {
-            Some(subject) if subject.is_empty() => {
-                vec.push("Batsign restored subject must not be empty.".to_string())
-            }
+            Some("") => vec.push("Batsign restored subject must not be empty.".to_string()),
             None => vec.push("Batsign restored subject is required.".to_string()),
             _ => {}
         }
@@ -114,9 +110,7 @@ impl Settings {
             .as_deref()
             .map(str::trim)
         {
-            Some(subject) if subject.is_empty() => {
-                vec.push("Batsign alarm message template must not be empty.".to_string())
-            }
+            Some("") => vec.push("Batsign alarm message template must not be empty.".to_string()),
             None => vec.push("Batsign alarm message template is required.".to_string()),
             _ => {}
         }
@@ -126,7 +120,7 @@ impl Settings {
             .as_deref()
             .map(str::trim)
         {
-            Some(subject) if subject.is_empty() => {
+            Some("") => {
                 vec.push("Batsign restored message template must not be empty.".to_string())
             }
             None => vec.push("Batsign restored message template is required.".to_string()),
