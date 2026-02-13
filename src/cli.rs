@@ -40,6 +40,10 @@ pub struct Cli {
     #[arg(short = 's', long)]
     pub batsign_subject: Option<String>,
 
+    /// Batsign message template.
+    #[arg(short = 'm', long)]
+    pub batsign_message_template: Option<String>,
+
     /// Override path to configuration file
     #[arg(short = 'c', long)]
     pub config: Option<PathBuf>,

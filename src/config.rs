@@ -15,6 +15,9 @@ pub struct FileConfig {
     /// Subject line for the Batsign message.
     pub batsign_subject: Option<String>,
 
+    /// Batsign message template string.
+    pub batsign_message_template: Option<String>,
+
     /// GPIO pin number to monitor.
     pub pin_number: Option<u8>,
 
@@ -40,6 +43,7 @@ impl From<&Settings> for FileConfig {
         Self {
             batsign_url: s.batsign_url.clone(),
             batsign_subject: s.batsign_subject.clone(),
+            batsign_message_template: s.batsign_message_template.clone(),
             pin_number: Some(s.pin_number),
             poll_interval: Some(s.poll_interval),
             qualify_high: Some(s.qualify_high),

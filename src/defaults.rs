@@ -18,7 +18,18 @@ pub const DEFAULT_TIME_BETWEEN_MAILS: Duration = Duration::from_secs(30 * 60); /
 pub const DEFAULT_TIME_BETWEEN_MAILS_RETRY: Duration = Duration::from_secs(5 * 60); // 5 min
 
 /// Default subject line for the Batsign message.
-pub const DEFAULT_SUBJECT: &'static str = "PellX Alarm";
+pub const DEFAULT_ALARM_SUBJECT: &'static str = "PellX Alarm";
+
+/// Default message template for the Batsign message.
+pub const DEFAULT_ALARM_MESSAGE_TEMPLATE: &'static str =
+    "Triggered at {timestamp}. Pin has been HIGH for {duration}.";
+
+/// Default subject line for the Batsign message when the alarm is restored.
+pub const DEFAULT_RESTORED_SUBJECT: &'static str = "PellX Restored";
+
+/// Default message template for the Batsign message when the alarm is restored.
+pub const DEFAULT_RESTORED_MESSAGE_TEMPLATE: &'static str =
+    "Restored at {timestamp}. Pin is now LOW.";
 
 /// Program name string.
 pub const PROGRAM_NAME: &'static str = "PellX Monitor";

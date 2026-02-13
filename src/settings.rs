@@ -29,6 +29,9 @@ pub struct Settings {
     /// Subject to use for Batsign notifications.
     pub batsign_subject: Option<String>,
 
+    /// Message template to use for Batsign notifications.
+    pub batsign_message_template: Option<String>,
+
     /// Optional path to the config file used, for logging purposes.
     pub config_path: Option<PathBuf>,
 }
@@ -43,6 +46,7 @@ impl Default for Settings {
             time_between_mails_retry: defaults::DEFAULT_TIME_BETWEEN_MAILS_RETRY,
             batsign_url: None,
             batsign_subject: Some(defaults::DEFAULT_SUBJECT.to_string()),
+            batsign_message_template: Some(defaults::DEFAULT_MESSAGE_TEMPLATE.to_string()),
             config_path: None,
         }
     }
