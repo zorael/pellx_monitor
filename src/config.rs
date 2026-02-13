@@ -2,6 +2,7 @@ use confy::get_configuration_file_path;
 use serde::{Deserialize, Serialize};
 use std::time;
 
+use crate::defaults;
 use crate::settings::Settings;
 
 /// Configuration file structure, which overrides default settings and is overridden by CLI args.
@@ -68,7 +69,7 @@ pub fn read_configuration_file() -> Option<FileConfig> {
         return None;
     }
 
-    match confy::load("pellx_monitor", "config") {
+    match confy::load(defaults::PROGRAM_ARG0, defaults::CONFIGURATION_TOML) {
         Ok(cfg) => Some(cfg),
         Err(e) => {
             eprintln!("[!] Failed to load configuration: {e}");

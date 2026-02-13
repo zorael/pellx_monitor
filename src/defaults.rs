@@ -32,6 +32,9 @@ pub const DEFAULT_RESTORED_MESSAGE_TEMPLATE: &str = "Restored at {timestamp}. Pi
 /// Program name string.
 pub const PROGRAM_NAME: &str = "PellX Monitor";
 
+/// Configuration file name, used by confy.
+pub const PROGRAM_ARG0: &str = "pellx_monitor";
+
 /// Author string.
 pub const AUTHOR: &str = "jr <zorael@gmail.com>";
 
@@ -48,3 +51,6 @@ pub const ABOUT: &str = concat!(
     VERSION,
     "\n$ git clone https://github.com/zorael/pellx_monitor"
 );
+
+/// Configuration file name, used by confy.
+pub const CONFIGURATION_TOML: &str = "config";

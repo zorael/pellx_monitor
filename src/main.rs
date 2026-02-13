@@ -22,18 +22,12 @@ fn main() -> process::ExitCode {
     settings = apply_file(settings, from_file);
     settings = apply_cli(settings, cli.clone());
 
-    if let Err(vec) = settings.sanity_check() {
-        eprintln!("[!] Configuration errors:");
-
-        for error in vec {
-            eprintln!("  * {error}");
-        }
-
-        return process::ExitCode::FAILURE;
-    }
-
     if cli.save {
-        match confy::store("pellx_mnonitor", "config", settings) {
+        match confy::store(
+            defaults::PROGRAM_ARG0,
+            defaults::CONFIGURATION_TOML,
+            settings,
+        ) {
             Ok(()) => {
                 println!("Configuration file written.");
                 return process::ExitCode::SUCCESS;
@@ -43,6 +37,16 @@ fn main() -> process::ExitCode {
                 return process::ExitCode::FAILURE;
             }
         }
+    }
+
+    if let Err(vec) = settings.sanity_check() {
+        eprintln!("[!] Configuration errors:");
+
+        for error in vec {
+            eprintln!("  * {error}");
+        }
+
+        return process::ExitCode::FAILURE;
     }
 
     print_banner();
