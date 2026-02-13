@@ -20,6 +20,20 @@ pub fn should_send_batsign(
     }
 }
 
+/// Determines if a Batsign should be sent, based on the last successful and failed timestamps.
+pub fn should_send_restored_batsign(
+    now: Instant,
+    last: Option<Instant>,
+    last_failed: Option<Instant>,
+    time_between_batsigns_retry: Duration,
+) -> bool {
+    if let Some(last_failed) = last_failed {
+        return now.duration_since(last_failed) >= time_between_batsigns_retry;
+    }
+
+    last.is_none()
+}
+
 /// Constructs a Batsign message body.
 pub fn get_batsign_message(subject: &str) -> String {
     format!("Subject: {subject}\n")

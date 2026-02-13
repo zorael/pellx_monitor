@@ -1,6 +1,5 @@
 use clap::Parser;
 use humantime;
-use std::path::PathBuf;
 use std::time::Duration;
 
 use crate::defaults;
@@ -20,33 +19,25 @@ pub struct Cli {
     #[arg(short = 'i', long, value_parser = humantime::parse_duration)]
     pub poll_interval: Option<Duration>,
 
-    /// Duration the pin must be HIGH before qualifying as an alarm
-    #[arg(short = 'q', long, value_parser = humantime::parse_duration)]
-    pub qualify_high: Option<Duration>,
+    /// Duration the pin must be HIGH or LOW before qualifying as a valid change
+    #[arg(short = 'H', long, value_parser = humantime::parse_duration)]
+    pub hold: Option<Duration>,
 
     /// Minimum time between sending notification mails
     #[arg(short = 't', long, value_parser = humantime::parse_duration)]
-    pub time_between_mails: Option<Duration>,
+    pub time_between_batsigns: Option<Duration>,
 
     /// Time to wait before retrying to send a notification mail after a failure
     #[arg(short = 'r', long, value_parser = humantime::parse_duration)]
-    pub time_between_mails_retry: Option<Duration>,
+    pub time_between_batsigns_retry: Option<Duration>,
 
     /// Batsign URL to send the alert to (REQUIRED)
     #[arg(short = 'u', long)]
     pub batsign_url: Option<String>,
 
-    /// Subject line for the Batsign message (REQUIRED)
-    #[arg(short = 's', long)]
-    pub batsign_subject: Option<String>,
-
-    /// Batsign message template.
-    #[arg(short = 'm', long)]
-    pub batsign_message_template: Option<String>,
-
-    /// Override path to configuration file
-    #[arg(short = 'c', long)]
-    pub config: Option<PathBuf>,
+    /// Perform a dry run without sending any mails
+    #[arg(long)]
+    pub dry_run: bool,
 
     /// Write the resolved configuration to disk
     #[arg(long)]

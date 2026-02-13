@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use serde::Serialize;
 use std::time::Duration;
 
 use crate::cli::Cli;
@@ -6,7 +6,7 @@ use crate::config::FileConfig;
 use crate::defaults;
 
 /// Application settings, including defaults and sanity checks.
-#[derive(Clone)]
+#[derive(Serialize)]
 pub struct Settings {
     /// GPIO pin number to monitor.
     pub pin_number: u8,
@@ -14,26 +14,29 @@ pub struct Settings {
     /// Poll interval for checking the GPIO pin.
     pub poll_interval: Duration,
 
-    /// Time the GPIO pin must be high before qualifying as a valid event.
-    pub qualify_high: Duration,
+    /// Time the GPIO pin must be HIGH or LOW before qualifying as a valid change.
+    pub hold: Duration,
 
     /// Minimum time between sending mails, to avoid spamming.
-    pub time_between_mails: Duration,
+    pub time_between_batsigns: Duration,
 
     /// Time to wait before retrying to send a mail after a failure.
-    pub time_between_mails_retry: Duration,
+    pub time_between_batsigns_retry: Duration,
 
     /// URL of the Batsign API to send notifications to.
     pub batsign_url: Option<String>,
 
-    /// Subject to use for Batsign notifications.
-    pub batsign_subject: Option<String>,
+    /// Subject to use for Batsign alarm notifications.
+    pub batsign_alarm_subject: Option<String>,
 
-    /// Message template to use for Batsign notifications.
-    pub batsign_message_template: Option<String>,
+    /// Message template to use for Batsign alarm notifications.
+    pub batsign_alarm_message_template: Option<String>,
 
-    /// Optional path to the config file used, for logging purposes.
-    pub config_path: Option<PathBuf>,
+    /// Subject to use for Batsign restored notifications.
+    pub batsign_restored_subject: Option<String>,
+
+    /// Message template to use for Batsign restored notifications.
+    pub batsign_restored_message_template: Option<String>,
 }
 
 impl Default for Settings {
@@ -41,13 +44,18 @@ impl Default for Settings {
         Self {
             pin_number: defaults::DEFAULT_PIN,
             poll_interval: defaults::DEFAULT_POLL_INTERVAL,
-            qualify_high: defaults::DEFAULT_QUALIFY_HIGH,
-            time_between_mails: defaults::DEFAULT_TIME_BETWEEN_MAILS,
-            time_between_mails_retry: defaults::DEFAULT_TIME_BETWEEN_MAILS_RETRY,
+            hold: defaults::DEFAULT_HOLD,
+            time_between_batsigns: defaults::DEFAULT_TIME_BETWEEN_BATSIGNS,
+            time_between_batsigns_retry: defaults::DEFAULT_TIME_BETWEEN_BATSIGNS_RETRY,
             batsign_url: None,
-            batsign_subject: Some(defaults::DEFAULT_SUBJECT.to_string()),
-            batsign_message_template: Some(defaults::DEFAULT_MESSAGE_TEMPLATE.to_string()),
-            config_path: None,
+            batsign_alarm_subject: Some(defaults::DEFAULT_ALARM_SUBJECT.to_string()),
+            batsign_alarm_message_template: Some(
+                defaults::DEFAULT_ALARM_MESSAGE_TEMPLATE.to_string(),
+            ),
+            batsign_restored_subject: Some(defaults::DEFAULT_RESTORED_SUBJECT.to_string()),
+            batsign_restored_message_template: Some(
+                defaults::DEFAULT_RESTORED_MESSAGE_TEMPLATE.to_string(),
+            ),
         }
     }
 }
@@ -68,16 +76,16 @@ impl Settings {
             vec.push("Poll interval must be greater than zero.".to_string());
         }
 
-        if self.time_between_mails == Duration::ZERO {
+        if self.time_between_batsigns == Duration::ZERO {
             vec.push("Time between mails must be greater than zero.".to_string());
         }
 
-        if self.time_between_mails_retry == Duration::ZERO {
+        if self.time_between_batsigns_retry == Duration::ZERO {
             vec.push("Time between mails retry must be greater than zero.".to_string());
         }
 
         match self.batsign_url.as_deref().map(str::trim) {
-            Some(url) if url.is_empty() => vec.push("Batsign URL cannot be empty.".to_string()),
+            Some(url) if url.is_empty() => vec.push("Batsign URL must not be empty.".to_string()),
             Some(url) if !url.starts_with("http://") && !url.starts_with("https://") => {
                 vec.push("Batsign URL must start with http:// or https://.".to_string())
             }
@@ -85,11 +93,43 @@ impl Settings {
             _ => {}
         }
 
-        match self.batsign_subject.as_deref().map(str::trim) {
+        match self.batsign_alarm_subject.as_deref().map(str::trim) {
             Some(subject) if subject.is_empty() => {
-                vec.push("Batsign subject cannot be empty.".to_string())
+                vec.push("Batsign alarm subject must not be empty.".to_string())
             }
-            None => vec.push("Batsign subject is required.".to_string()),
+            None => vec.push("Batsign alarm subject is required.".to_string()),
+            _ => {}
+        }
+
+        match self.batsign_restored_subject.as_deref().map(str::trim) {
+            Some(subject) if subject.is_empty() => {
+                vec.push("Batsign restored subject must not be empty.".to_string())
+            }
+            None => vec.push("Batsign restored subject is required.".to_string()),
+            _ => {}
+        }
+
+        match self
+            .batsign_alarm_message_template
+            .as_deref()
+            .map(str::trim)
+        {
+            Some(subject) if subject.is_empty() => {
+                vec.push("Batsign alarm message template must not be empty.".to_string())
+            }
+            None => vec.push("Batsign alarm message template is required.".to_string()),
+            _ => {}
+        }
+
+        match self
+            .batsign_restored_message_template
+            .as_deref()
+            .map(str::trim)
+        {
+            Some(subject) if subject.is_empty() => {
+                vec.push("Batsign restored message template must not be empty.".to_string())
+            }
+            None => vec.push("Batsign restored message template is required.".to_string()),
             _ => {}
         }
 
@@ -98,66 +138,80 @@ impl Settings {
 }
 
 /// Applies config file settings to the default settings, returning the resulting settings.
-pub fn apply_file(mut s: Settings, f: FileConfig) -> Settings {
-    if let Some(pin_number) = f.pin_number {
+pub fn apply_file(mut s: Settings, file: Option<FileConfig>) -> Settings {
+    if file.is_none() {
+        return s;
+    }
+
+    let file = file.unwrap();
+
+    if let Some(pin_number) = file.pin_number {
         s.pin_number = pin_number;
     }
 
-    if let Some(poll_interval) = f.poll_interval {
+    if let Some(poll_interval) = file.poll_interval {
         s.poll_interval = poll_interval;
     }
 
-    if let Some(qualify_high) = f.qualify_high {
-        s.qualify_high = qualify_high;
+    if let Some(hold) = file.hold {
+        s.hold = hold;
     }
 
-    if let Some(time_between_mails) = f.time_between_mails {
-        s.time_between_mails = time_between_mails;
+    if let Some(time_between_batsigns) = file.time_between_batsigns {
+        s.time_between_batsigns = time_between_batsigns;
     }
 
-    if let Some(time_between_mails_retry) = f.time_between_mails_retry {
-        s.time_between_mails_retry = time_between_mails_retry;
+    if let Some(time_between_batsigns_retry) = file.time_between_batsigns_retry {
+        s.time_between_batsigns_retry = time_between_batsigns_retry;
     }
 
-    if f.batsign_url.is_some() {
-        s.batsign_url = f.batsign_url;
+    if file.batsign_url.is_some() {
+        s.batsign_url = file.batsign_url;
     }
 
-    if f.batsign_subject.is_some() {
-        s.batsign_subject = f.batsign_subject;
+    if file.batsign_alarm_subject.is_some() {
+        s.batsign_alarm_subject = file.batsign_alarm_subject;
+    }
+
+    if file.batsign_alarm_message_template.is_some() {
+        s.batsign_alarm_message_template = file.batsign_alarm_message_template;
+    }
+
+    if file.batsign_restored_subject.is_some() {
+        s.batsign_restored_subject = file.batsign_restored_subject;
+    }
+
+    if file.batsign_restored_message_template.is_some() {
+        s.batsign_restored_message_template = file.batsign_restored_message_template;
     }
 
     s
 }
 
 /// Applies CLI settings to the given settings, returning the resulting settings.
-pub fn apply_cli(mut s: Settings, c: Cli) -> Settings {
-    if let Some(pin_number) = c.pin_number {
+pub fn apply_cli(mut s: Settings, cli: Cli) -> Settings {
+    if let Some(pin_number) = cli.pin_number {
         s.pin_number = pin_number;
     }
 
-    if let Some(poll_interval) = c.poll_interval {
+    if let Some(poll_interval) = cli.poll_interval {
         s.poll_interval = poll_interval;
     }
 
-    if let Some(qualify_high) = c.qualify_high {
-        s.qualify_high = qualify_high;
+    if let Some(hold) = cli.hold {
+        s.hold = hold;
     }
 
-    if let Some(time_between_mails) = c.time_between_mails {
-        s.time_between_mails = time_between_mails;
+    if let Some(time_between_batsigns) = cli.time_between_batsigns {
+        s.time_between_batsigns = time_between_batsigns;
     }
 
-    if let Some(time_between_mails_retry) = c.time_between_mails_retry {
-        s.time_between_mails_retry = time_between_mails_retry;
+    if let Some(time_between_batsigns_retry) = cli.time_between_batsigns_retry {
+        s.time_between_batsigns_retry = time_between_batsigns_retry;
     }
 
-    if c.batsign_url.is_some() {
-        s.batsign_url = c.batsign_url;
-    }
-
-    if c.batsign_subject.is_some() {
-        s.batsign_subject = c.batsign_subject;
+    if cli.batsign_url.is_some() {
+        s.batsign_url = cli.batsign_url;
     }
 
     s

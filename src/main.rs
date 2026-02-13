@@ -10,66 +10,36 @@ use rppal::gpio::{Gpio, Level};
 use std::time::Instant;
 use std::{process, thread};
 
-use crate::batsign::{get_batsign_message, send_batsign, should_send_batsign};
 use crate::cli::Cli;
-use crate::config::{read_config_file, resolve_default_config_path, save_config};
 use crate::settings::{Settings, apply_cli, apply_file};
 
 /// Program entrypoint.
 fn main() -> process::ExitCode {
     let cli = Cli::parse();
+    let from_file = config::read_configuration_file();
     let mut settings = Settings::default();
 
-    settings.config_path = cli.config.clone().or_else(resolve_default_config_path);
-
-    if let Some(path) = &settings.config_path {
-        if path.exists() {
-            match read_config_file(path) {
-                Ok(f) => settings = apply_file(settings, f),
-                Err(e) => {
-                    eprintln!("[!] {e}");
-                    return process::ExitCode::FAILURE;
-                }
-            }
-        } else if cli.config.is_some() {
-            eprintln!("[!] Config file not found at {:?}.", path);
-            return process::ExitCode::FAILURE;
-        }
-    }
-
+    settings = apply_file(settings, from_file);
     settings = apply_cli(settings, cli.clone());
 
     if let Err(vec) = settings.sanity_check() {
         eprintln!("[!] Configuration errors:");
 
         for error in vec {
-            eprintln!("[!] {error}");
+            eprintln!("  * {error}");
         }
 
         return process::ExitCode::FAILURE;
     }
 
     if cli.save {
-        let path = settings
-            .config_path
-            .clone()
-            .ok_or_else(|| "[!] Failed to resolve configuration file path".to_string());
-
-        let path = match path {
-            Ok(p) => p,
-            Err(e) => {
-                eprintln!("[!] Failed to resolve configuration file path: {e}");
-                return process::ExitCode::FAILURE;
-            }
-        };
-
-        match save_config(&path, &settings) {
+        match confy::store("pellx_mnonitor", "config", settings) {
             Ok(()) => {
-                println!("Configuration file written to {}", path.display());
+                println!("Configuration file written.");
                 return process::ExitCode::SUCCESS;
             }
             Err(e) => {
-                eprintln!("[!] Failed to write configuration to file: {e}");
+                eprintln!("[!] Failed to write configuration: {e}");
                 return process::ExitCode::FAILURE;
             }
         }
@@ -93,85 +63,141 @@ fn main() -> process::ExitCode {
         }
     };
 
-    let batsign_message = get_batsign_message(settings.batsign_subject.as_deref().unwrap());
     let batsign_url = settings.batsign_url.as_deref().unwrap();
     let client = Client::new();
 
     let mut high_since: Option<Instant> = None;
-    let mut last_batsign: Option<Instant> = None;
-    let mut last_failed_batsign: Option<Instant> = None;
-    let mut printed_alarm = false;
+    let mut low_since: Option<Instant> = None;
+    let mut last_alarm_batsign: Option<Instant> = None;
+    let mut last_failed_alarm_batsign: Option<Instant> = None;
+    let mut last_restored_batsign: Option<Instant> = None;
+    let mut last_failed_restored_batsign: Option<Instant> = None;
 
-    println!("PellX monitor starting...");
     println!("GPIO pin number:    {}", settings.pin_number);
     println!(
         "Poll interval:      {}",
         humantime::format_duration(settings.poll_interval)
     );
     println!(
-        "Qualify HIGH:       {}",
-        humantime::format_duration(settings.qualify_high)
+        "Hold to qualify:    {}",
+        humantime::format_duration(settings.hold)
     );
     println!(
         "Time between mails: {}",
-        humantime::format_duration(settings.time_between_mails)
+        humantime::format_duration(settings.time_between_batsigns)
     );
     println!("Batsign URL:        {}", batsign_url);
+    println!();
 
     loop {
         match pin.read() {
             Level::Low => {
                 // OK (closed): pull-up is overridden, LOW
-                if printed_alarm {
-                    println!("Reset to LOW.");
-                    printed_alarm = false;
-                }
-
-                high_since = None;
-                last_batsign = None;
-                last_failed_batsign = None;
-            }
-            Level::High => {
-                // ALARM (open): internal pull-up pulls to HIGH
-                let start = high_since.get_or_insert_with(Instant::now);
-                let qualified = start.elapsed() >= settings.qualify_high;
+                let start = low_since.get_or_insert_with(Instant::now);
+                let qualified = start.elapsed() >= settings.hold;
 
                 if !qualified {
                     thread::sleep(settings.poll_interval);
                     continue;
                 }
 
-                if !printed_alarm {
-                    // Print alarm only once
-                    println!(
-                        "[!] ALARM: Pin has been HIGH for >= {}.",
-                        humantime::format_duration(settings.qualify_high)
-                    );
-                    printed_alarm = true;
-                }
-
                 let now = Instant::now();
+                high_since = None;
 
-                if should_send_batsign(
+                if batsign::should_send_restored_batsign(
                     now,
-                    last_batsign,
-                    last_failed_batsign,
-                    settings.time_between_mails,
-                    settings.time_between_mails_retry,
+                    last_restored_batsign,
+                    last_failed_restored_batsign,
+                    settings.time_between_batsigns_retry,
                 ) {
-                    match send_batsign(&client, &batsign_url, &batsign_message) {
+                    let batsign_restored_message = batsign::get_batsign_message(
+                        settings.batsign_restored_subject.as_deref().unwrap(),
+                    );
+
+                    if cli.dry_run {
+                        println!(
+                            "Dry run: would send restored Batsign with subject '{}'",
+                            settings.batsign_restored_subject.as_deref().unwrap()
+                        );
+
+                        last_restored_batsign = Some(now);
+                        last_failed_restored_batsign = None;
+                        last_alarm_batsign = None;
+                        last_failed_alarm_batsign = None;
+                        continue;
+                    }
+
+                    match batsign::send_batsign(&client, &batsign_url, &batsign_restored_message) {
                         Ok(status) if status.is_success() => {
                             println!("Batsign sent; HTTP {status}");
-                            last_batsign = Some(now);
-                            last_failed_batsign = None;
+                            last_restored_batsign = Some(now);
+                            last_failed_restored_batsign = None;
+                            last_alarm_batsign = None;
+                            last_failed_alarm_batsign = None;
                         }
                         Ok(status) => {
                             eprintln!("[!] Batsign returned error; HTTP {status}");
-                            last_failed_batsign = Some(now);
+                            last_failed_restored_batsign = Some(now);
                         }
                         Err(e) => {
                             eprintln!("[!] Could not reach Batsign: {e}");
-                            last_failed_batsign = Some(now);
+                            last_failed_restored_batsign = Some(now);
+                        }
+                    }
+                }
+            }
+            Level::High => {
+                // ALARM (open): internal pull-up pulls to HIGH
+                let start = high_since.get_or_insert_with(Instant::now);
+                let qualified = start.elapsed() >= settings.hold;
+
+                if !qualified {
+                    thread::sleep(settings.poll_interval);
+                    continue;
+                }
+
+                let now = Instant::now();
+                low_since = None;
+
+                if batsign::should_send_batsign(
+                    now,
+                    last_alarm_batsign,
+                    last_failed_alarm_batsign,
+                    settings.time_between_batsigns,
+                    settings.time_between_batsigns_retry,
+                ) {
+                    let batsign_alarm_message = batsign::get_batsign_message(
+                        settings.batsign_alarm_subject.as_deref().unwrap(),
+                    );
+
+                    if cli.dry_run {
+                        println!(
+                            "Dry run: would send alarm Batsign with subject '{}'",
+                            settings.batsign_alarm_subject.as_deref().unwrap()
+                        );
+
+                        last_alarm_batsign = Some(now);
+                        last_failed_alarm_batsign = None;
+                        last_restored_batsign = None;
+                        last_failed_restored_batsign = None;
+                        continue;
+                    }
+
+                    match batsign::send_batsign(&client, &batsign_url, &batsign_alarm_message) {
+                        Ok(status) if status.is_success() => {
+                            println!("Batsign sent; HTTP {status}");
+                            last_alarm_batsign = Some(now);
+                            last_failed_alarm_batsign = None;
+                            last_restored_batsign = None;
+                            last_failed_restored_batsign = None;
+                        }
+                        Ok(status) => {
+                            eprintln!("[!] Batsign returned error; HTTP {status}");
+                            last_failed_alarm_batsign = Some(now);
+                        }
+                        Err(e) => {
+                            eprintln!("[!] Could not reach Batsign: {e}");
+                            last_failed_alarm_batsign = Some(now);
                         }
                     }
                 }
