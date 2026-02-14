@@ -56,4 +56,4 @@ pub const ABOUT: &str = concat!(
 );
 
 /// Configuration file name, used by confy.
-pub const CONFIGURATION_TOML: &str = "config";
+pub const CONFIGURATION_FILENAME_SANS_TOML: &str = "config";

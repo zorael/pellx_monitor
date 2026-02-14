@@ -83,14 +83,20 @@ pub fn read_configuration_file(filename: &Option<String>) -> Result<FileConfig, 
     match filename {
         Some(f) => confy::load_path(f),
         None => {
-            if !get_configuration_file_path(defaults::PROGRAM_ARG0, defaults::CONFIGURATION_TOML)
-                .expect("configuration file path resolution")
-                .exists()
+            if !get_configuration_file_path(
+                defaults::PROGRAM_ARG0,
+                defaults::CONFIGURATION_FILENAME_SANS_TOML,
+            )
+            .expect("configuration file path resolution")
+            .exists()
             {
                 return Ok(FileConfig::from(&Settings::default()));
             }
 
-            confy::load(defaults::PROGRAM_ARG0, defaults::CONFIGURATION_TOML)
+            confy::load(
+                defaults::PROGRAM_ARG0,
+                defaults::CONFIGURATION_FILENAME_SANS_TOML,
+            )
         }
     }
 }
@@ -101,6 +107,10 @@ pub fn save_configuration_file(
 ) -> Result<(), confy::ConfyError> {
     match filename {
         Some(f) => confy::store_path(f, cfg),
-        None => confy::store(defaults::PROGRAM_ARG0, defaults::CONFIGURATION_TOML, cfg),
+        None => confy::store(
+            defaults::PROGRAM_ARG0,
+            defaults::CONFIGURATION_FILENAME_SANS_TOML,
+            cfg,
+        ),
     }
 }

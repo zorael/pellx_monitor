@@ -38,7 +38,7 @@ fn main() -> process::ExitCode {
             Some(filename) => filename,
             None => &confy::get_configuration_file_path(
                 defaults::PROGRAM_ARG0,
-                defaults::CONFIGURATION_TOML,
+                defaults::CONFIGURATION_FILENAME_SANS_TOML,
             )
             .expect("configuration file path resolution")
             .to_string_lossy()
