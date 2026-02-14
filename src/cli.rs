@@ -10,11 +10,11 @@ use crate::defaults;
 #[command(author = defaults::AUTHOR)]
 #[command(about = defaults::ABOUT)]
 pub struct Cli {
-    /// GPIO pin number to monitor
+    /// Raspberry Pi GPIO pin number to monitor
     #[arg(short = 'p', long)]
     pub pin_number: Option<u8>,
 
-    /// Poll interval for checking the GPIO pin
+    /// Poll interval between GPIO pin reads
     #[arg(short = 'i', long, value_parser = humantime::parse_duration)]
     pub poll_interval: Option<Duration>,
 
@@ -42,7 +42,7 @@ pub struct Cli {
     #[arg(long)]
     pub debug: bool,
 
-    /// Specify an alternate configuration file name (default: "config")
+    /// Specify an alternate configuration file
     #[arg(short = 'c', long)]
     pub config: Option<String>,
 
