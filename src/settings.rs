@@ -37,6 +37,12 @@ pub struct Settings {
 
     /// Message template to use for Batsign restored notifications.
     pub batsign_restored_message_template: Option<String>,
+
+    /// If true, the program will not send any Batsign notifications and will only print what it would do.
+    pub dry_run: bool,
+
+    /// If true, the program will print additional debug information.
+    pub debug: bool,
 }
 
 impl Default for Settings {
@@ -56,6 +62,8 @@ impl Default for Settings {
             batsign_restored_message_template: Some(
                 defaults::DEFAULT_RESTORED_MESSAGE_TEMPLATE.to_string(),
             ),
+            dry_run: false,
+            debug: false,
         }
     }
 }
@@ -84,50 +92,52 @@ impl Settings {
             vec.push("Time between mails retry must be greater than zero.".to_string());
         }
 
-        match self.batsign_url.as_deref().map(str::trim) {
-            Some("") => vec.push("Batsign URL must not be empty.".to_string()),
-            Some(url) if url == defaults::DEFAULT_BATSIGN_URL => {
-                vec.push("Batsign URL is required.".to_string());
+        if !self.dry_run {
+            match self.batsign_url.as_deref().map(str::trim) {
+                Some("") => vec.push("Batsign URL must not be empty.".to_string()),
+                Some(url) if url == defaults::DEFAULT_BATSIGN_URL => {
+                    vec.push("Batsign URL is required.".to_string());
+                }
+                Some(url) if !url.starts_with("http://") && !url.starts_with("https://") => {
+                    vec.push("Batsign URL must start with http:// or https://.".to_string())
+                }
+                None => vec.push("Batsign URL is required.".to_string()),
+                _ => {}
             }
-            Some(url) if !url.starts_with("http://") && !url.starts_with("https://") => {
-                vec.push("Batsign URL must start with http:// or https://.".to_string())
+
+            match self.batsign_alarm_subject.as_deref().map(str::trim) {
+                Some("") => vec.push("Batsign alarm subject must not be empty.".to_string()),
+                None => vec.push("Batsign alarm subject is required.".to_string()),
+                _ => {}
             }
-            None => vec.push("Batsign URL is required.".to_string()),
-            _ => {}
-        }
 
-        match self.batsign_alarm_subject.as_deref().map(str::trim) {
-            Some("") => vec.push("Batsign alarm subject must not be empty.".to_string()),
-            None => vec.push("Batsign alarm subject is required.".to_string()),
-            _ => {}
-        }
-
-        match self.batsign_restored_subject.as_deref().map(str::trim) {
-            Some("") => vec.push("Batsign restored subject must not be empty.".to_string()),
-            None => vec.push("Batsign restored subject is required.".to_string()),
-            _ => {}
-        }
-
-        match self
-            .batsign_alarm_message_template
-            .as_deref()
-            .map(str::trim)
-        {
-            Some("") => vec.push("Batsign alarm message template must not be empty.".to_string()),
-            None => vec.push("Batsign alarm message template is required.".to_string()),
-            _ => {}
-        }
-
-        match self
-            .batsign_restored_message_template
-            .as_deref()
-            .map(str::trim)
-        {
-            Some("") => {
-                vec.push("Batsign restored message template must not be empty.".to_string())
+            match self.batsign_restored_subject.as_deref().map(str::trim) {
+                Some("") => vec.push("Batsign restored subject must not be empty.".to_string()),
+                None => vec.push("Batsign restored subject is required.".to_string()),
+                _ => {}
             }
-            None => vec.push("Batsign restored message template is required.".to_string()),
-            _ => {}
+
+            match self
+                .batsign_alarm_message_template
+                .as_deref()
+                .map(str::trim)
+            {
+                Some("") => vec.push("Batsign alarm message template must not be empty.".to_string()),
+                None => vec.push("Batsign alarm message template is required.".to_string()),
+                _ => {}
+            }
+
+            match self
+                .batsign_restored_message_template
+                .as_deref()
+                .map(str::trim)
+            {
+                Some("") => {
+                    vec.push("Batsign restored message template must not be empty.".to_string())
+                }
+                None => vec.push("Batsign restored message template is required.".to_string()),
+                _ => {}
+            }
         }
 
         if vec.is_empty() { Ok(()) } else { Err(vec) }
@@ -210,6 +220,9 @@ pub fn apply_cli(mut s: Settings, cli: Cli) -> Settings {
     if cli.batsign_url.is_some() {
         s.batsign_url = cli.batsign_url;
     }
+
+    s.dry_run = cli.dry_run;
+    s.debug = cli.debug;
 
     s
 }

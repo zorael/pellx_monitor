@@ -113,9 +113,17 @@ fn main() -> process::ExitCode {
                 let start = low_since.get_or_insert_with(Instant::now);
                 let qualified = start.elapsed() >= settings.hold;
 
+                if settings.debug {
+                    println!("LOW");
+                }
+
                 if !qualified {
                     thread::sleep(settings.poll_interval);
                     continue;
+                }
+
+                if settings.debug {
+                    println!("...qualified!");
                 }
 
                 let now = Instant::now();
@@ -127,11 +135,15 @@ fn main() -> process::ExitCode {
                     last_failed_restored_batsign,
                     settings.time_between_batsigns_retry,
                 ) {
+                    if settings.debug {
+                        println!("...should send restored batsign!");
+                    }
+
                     let batsign_restored_message = batsign::get_batsign_message(
                         settings.batsign_restored_subject.as_deref().unwrap(),
                     );
 
-                    if cli.dry_run {
+                    if settings.dry_run {
                         println!(
                             "Dry run: would send restored Batsign with subject '{}'",
                             settings.batsign_restored_subject.as_deref().unwrap()
@@ -168,9 +180,17 @@ fn main() -> process::ExitCode {
                 let start = high_since.get_or_insert_with(Instant::now);
                 let qualified = start.elapsed() >= settings.hold;
 
+                if settings.debug {
+                    println!("HIGH");
+                }
+
                 if !qualified {
                     thread::sleep(settings.poll_interval);
                     continue;
+                }
+
+                if settings.debug {
+                    println!("...qualified!");
                 }
 
                 let now = Instant::now();
@@ -183,11 +203,15 @@ fn main() -> process::ExitCode {
                     settings.time_between_batsigns,
                     settings.time_between_batsigns_retry,
                 ) {
+                    if settings.debug {
+                        println!("...should send batsign!");
+                    }
+
                     let batsign_alarm_message = batsign::get_batsign_message(
                         settings.batsign_alarm_subject.as_deref().unwrap(),
                     );
 
-                    if cli.dry_run {
+                    if settings.dry_run {
                         println!(
                             "Dry run: would send alarm Batsign with subject '{}'",
                             settings.batsign_alarm_subject.as_deref().unwrap()
@@ -219,6 +243,10 @@ fn main() -> process::ExitCode {
                     }
                 }
             }
+        }
+
+        if settings.debug {
+            println!("...sleep...");
         }
 
         thread::sleep(settings.poll_interval);

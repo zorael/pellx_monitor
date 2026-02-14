@@ -38,6 +38,10 @@ pub struct Cli {
     #[arg(long)]
     pub dry_run: bool,
 
+    /// Print additional debug information
+    #[arg(long)]
+    pub debug: bool,
+
     /// Specify an alternate configuration file name (default: "config")
     #[arg(short = 'c', long)]
     pub config: Option<String>,
