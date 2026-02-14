@@ -11,7 +11,7 @@ pub const DEFAULT_POLL_INTERVAL: Duration = Duration::from_secs(1);
 pub const DEFAULT_HOLD: Duration = Duration::from_secs(10);
 
 /// Default minimum time between sending mails.
-pub const DEFAULT_TIME_BETWEEN_BATSIGNS: Duration = Duration::from_secs(30 * 60); // 30 min
+pub const DEFAULT_TIME_BETWEEN_BATSIGNS: Duration = Duration::from_secs(6 * 3600); // 6 hours
 
 /// Default time to wait before retrying to send a mail after a failure.
 pub const DEFAULT_TIME_BETWEEN_BATSIGNS_RETRY: Duration = Duration::from_secs(5 * 60); // 5 min
@@ -30,7 +30,7 @@ pub const DEFAULT_RESTORED_SUBJECT: &str = "PellX Restored";
 pub const DEFAULT_RESTORED_MESSAGE_TEMPLATE: &str = "Restored at {timestamp}. Pin is now LOW.";
 
 /// Default and dummy Batsign API URL.
-pub const DEFAULT_BATSIGN_URL: &str = "https://batsign.me/<your-unique-url>";
+pub const DEFAULT_BATSIGN_URL: &str = "<your-unique-url>";
 
 /// Program name string.
 pub const PROGRAM_NAME: &str = "PellX Monitor";
