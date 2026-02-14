@@ -119,7 +119,9 @@ impl Settings {
                 .as_deref()
                 .map(str::trim)
             {
-                Some("") => vec.push("Batsign alarm message template must not be empty.".to_string()),
+                Some("") => {
+                    vec.push("Batsign alarm message template must not be empty.".to_string())
+                }
                 None => vec.push("Batsign alarm message template is required.".to_string()),
                 _ => {}
             }
@@ -219,6 +221,7 @@ pub fn apply_cli(mut s: Settings, cli: Cli) -> Settings {
     }
 
     s.dry_run = cli.dry_run;
+
     s.debug = cli.debug;
 
     s

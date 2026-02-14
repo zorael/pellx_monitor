@@ -5,7 +5,6 @@ mod defaults;
 mod settings;
 
 use clap::Parser;
-use confy::get_configuration_file_path;
 use reqwest::blocking::Client;
 use rppal::gpio::{Gpio, Level};
 use std::time::Instant;
@@ -32,12 +31,13 @@ fn main() -> process::ExitCode {
 
         let file_saved_to = match &cli.config {
             Some(filename) => filename,
-            None => {
-                &get_configuration_file_path(defaults::PROGRAM_ARG0, defaults::CONFIGURATION_TOML)
-                    .expect("configuration file path resolution")
-                    .to_string_lossy()
-                    .to_string()
-            }
+            None => &confy::get_configuration_file_path(
+                defaults::PROGRAM_ARG0,
+                defaults::CONFIGURATION_TOML,
+            )
+            .expect("configuration file path resolution")
+            .to_string_lossy()
+            .to_string(),
         };
 
         match config::save_configuration_file(&cli.config, &cfg) {
