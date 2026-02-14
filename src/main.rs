@@ -122,10 +122,6 @@ fn main() -> process::ExitCode {
                     continue;
                 }
 
-                if settings.debug {
-                    println!("...qualified!");
-                }
-
                 let now = Instant::now();
                 high_since = None;
 
@@ -189,10 +185,6 @@ fn main() -> process::ExitCode {
                     continue;
                 }
 
-                if settings.debug {
-                    println!("...qualified!");
-                }
-
                 let now = Instant::now();
                 low_since = None;
 
@@ -243,10 +235,6 @@ fn main() -> process::ExitCode {
                     }
                 }
             }
-        }
-
-        if settings.debug {
-            println!("...sleep...");
         }
 
         thread::sleep(settings.poll_interval);
