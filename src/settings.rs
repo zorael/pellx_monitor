@@ -17,10 +17,10 @@ pub struct Settings {
     /// Time the GPIO pin must be HIGH or LOW before qualifying as a valid change.
     pub hold: Duration,
 
-    /// Minimum time between sending mails, to avoid spamming.
+    /// Minimum time between sending notifications, to avoid spamming.
     pub time_between_batsigns: Duration,
 
-    /// Time to wait before retrying to send a mail after a failure.
+    /// Time to wait before retrying to send a notification after a failure.
     pub time_between_batsigns_retry: Duration,
 
     /// URL of the Batsign API to send notifications to.
@@ -85,32 +85,32 @@ impl Settings {
         }
 
         if self.time_between_batsigns == Duration::ZERO {
-            vec.push("Time between mails must be greater than zero.".to_string());
+            vec.push("Time between notifications must be greater than zero.".to_string());
         }
 
         if self.time_between_batsigns_retry == Duration::ZERO {
-            vec.push("Time between mails retry must be greater than zero.".to_string());
+            vec.push("Time between notification retries must be greater than zero.".to_string());
         }
 
         if !self.dry_run {
             match self.batsign_url.as_deref().map(str::trim) {
-                Some("") => vec.push("Batsign URL must not be empty.".to_string()),
-                Some(url) if !url.starts_with("http://") && !url.starts_with("https://") => {
-                    vec.push("Batsign URL must start with http:// or https://.".to_string())
+                Some("") => vec.push("The Batsign URL must not be empty.".to_string()),
+                Some(url) if !url.starts_with("https://") => {
+                    vec.push("The Batsign URL must start with `https://`.".to_string())
                 }
-                None => vec.push("Batsign URL is required.".to_string()),
+                None => vec.push("A Batsign URL is required.".to_string()),
                 _ => {}
             }
 
             match self.batsign_alarm_subject.as_deref().map(str::trim) {
-                Some("") => vec.push("Batsign alarm subject must not be empty.".to_string()),
-                None => vec.push("Batsign alarm subject is required.".to_string()),
+                Some("") => vec.push("The Batsign alarm subject must not be empty.".to_string()),
+                None => vec.push("A Batsign alarm subject is required.".to_string()),
                 _ => {}
             }
 
             match self.batsign_restored_subject.as_deref().map(str::trim) {
-                Some("") => vec.push("Batsign restored subject must not be empty.".to_string()),
-                None => vec.push("Batsign restored subject is required.".to_string()),
+                Some("") => vec.push("The Batsign restored subject must not be empty.".to_string()),
+                None => vec.push("A Batsign restored subject is required.".to_string()),
                 _ => {}
             }
 
@@ -120,9 +120,9 @@ impl Settings {
                 .map(str::trim)
             {
                 Some("") => {
-                    vec.push("Batsign alarm message template must not be empty.".to_string())
+                    vec.push("The Batsign alarm message template must not be empty.".to_string())
                 }
-                None => vec.push("Batsign alarm message template is required.".to_string()),
+                None => vec.push("A Batsign alarm message template is required.".to_string()),
                 _ => {}
             }
 
@@ -132,9 +132,9 @@ impl Settings {
                 .map(str::trim)
             {
                 Some("") => {
-                    vec.push("Batsign restored message template must not be empty.".to_string())
+                    vec.push("The Batsign restored message template must not be empty.".to_string())
                 }
-                None => vec.push("Batsign restored message template is required.".to_string()),
+                None => vec.push("A Batsign restored message template is required.".to_string()),
                 _ => {}
             }
         }
@@ -144,52 +144,52 @@ impl Settings {
 
     /// Print the settings in a human-readable format.
     pub fn print(&self) {
-        println!("Pin number:            {}", self.pin_number);
+        println!("GPIO pin number:              {}", self.pin_number);
 
         println!(
-            "Poll interval:         {}",
+            "Poll interval:                {}",
             humantime::format_duration(self.poll_interval)
         );
 
         println!(
-            "Hold:                  {}",
+            "Hold:                         {}",
             humantime::format_duration(self.hold)
         );
 
         println!(
-            "Time between mails:    {}",
+            "Time between notifications:   {}",
             humantime::format_duration(self.time_between_batsigns)
         );
 
         println!(
-            "Mail retry time:       {}",
+            "Notification retry time:      {}",
             humantime::format_duration(self.time_between_batsigns_retry)
         );
 
         println!(
-            "Batsign URL:           {}",
+            "Batsign URL:                  {}",
             self.batsign_url.as_deref().unwrap_or("None")
         );
 
         println!(
-            "Alarm subject:         {}",
+            "Alarm subject:                {}",
             self.batsign_alarm_subject.as_deref().unwrap_or("None")
         );
 
         println!(
-            "Restored subject:      {}",
+            "Restored subject:             {}",
             self.batsign_restored_subject.as_deref().unwrap_or("None")
         );
 
         println!(
-            "Alarm template:        {}",
+            "Alarm template:               {}",
             self.batsign_alarm_message_template
                 .as_deref()
                 .unwrap_or("None")
         );
 
         println!(
-            "Restored template:     {}",
+            "Restored template:            {}",
             self.batsign_restored_message_template
                 .as_deref()
                 .unwrap_or("None")
@@ -199,11 +199,9 @@ impl Settings {
 
 /// Applies config file settings to the default settings, returning the resulting settings.
 pub fn apply_file(mut s: Settings, file: Option<FileConfig>) -> Settings {
-    if file.is_none() {
+    let Some(file) = file else {
         return s;
-    }
-
-    let file = file.unwrap();
+    };
 
     if let Some(pin_number) = file.pin_number {
         s.pin_number = pin_number;
@@ -249,7 +247,7 @@ pub fn apply_file(mut s: Settings, file: Option<FileConfig>) -> Settings {
 }
 
 /// Applies CLI settings to the given settings, returning the resulting settings.
-pub fn apply_cli(mut s: Settings, cli: Cli) -> Settings {
+pub fn apply_cli(mut s: Settings, cli: &Cli) -> Settings {
     if let Some(pin_number) = cli.pin_number {
         s.pin_number = pin_number;
     }
@@ -271,7 +269,7 @@ pub fn apply_cli(mut s: Settings, cli: Cli) -> Settings {
     }
 
     if cli.batsign_url.is_some() {
-        s.batsign_url = cli.batsign_url;
+        s.batsign_url = cli.batsign_url.clone();
     }
 
     s.dry_run = cli.dry_run;

@@ -14,17 +14,18 @@ use std::{process, thread};
 fn main() -> process::ExitCode {
     let cli = cli::Cli::parse();
 
-    let cfg = match config::read_configuration_file(&cli.config) {
-        Ok(c) => Some(c),
+    let cfg = match config::read_config_file(&cli.config) {
+        Ok(c) => c,
         Err(e) => {
-            eprintln!("[!] Failed to read configuration file: {e}");
+            let (filename, _) = config::resolve_config_file(&cli.config);
+            eprintln!("[!] Failed to read configuration file `{filename}`: {e}");
             return process::ExitCode::FAILURE;
         }
     };
 
     let settings = settings::Settings::default();
-    let settings = settings::apply_file(settings, cfg.clone());
-    let settings = settings::apply_cli(settings, cli.clone());
+    let settings = settings::apply_file(settings, cfg); //.clone());
+    let settings = settings::apply_cli(settings, &cli);
 
     if cli.show {
         settings.print();
@@ -33,32 +34,22 @@ fn main() -> process::ExitCode {
 
     if cli.save {
         let cfg = config::FileConfig::from(&settings);
+        let (filename, _) = config::resolve_config_file(&cli.config);
 
-        let file_saved_to = match &cli.config {
-            Some(filename) => filename,
-            None => &confy::get_configuration_file_path(
-                defaults::PROGRAM_ARG0,
-                defaults::CONFIGURATION_FILENAME_SANS_TOML,
-            )
-            .expect("configuration file path resolution")
-            .to_string_lossy()
-            .to_string(),
-        };
-
-        match config::save_configuration_file(&cli.config, &cfg) {
+        match config::save_config_file(&cli.config, &cfg) {
             Ok(()) => {
-                println!("Configuration file written to {}.", file_saved_to);
+                println!("Configuration file written to `{filename}`.");
                 return process::ExitCode::SUCCESS;
             }
             Err(e) => {
-                eprintln!("[!] Failed to write configuration: {e}");
+                eprintln!("[!] Failed to write configuration to `{filename}`: {e}");
                 return process::ExitCode::FAILURE;
             }
         };
     }
 
     if let Err(vec) = settings.sanity_check() {
-        eprintln!("[!] Configuration errors:");
+        eprintln!("[!] Configuration has errors:");
 
         for error in vec {
             eprintln!("  * {error}");
@@ -80,7 +71,7 @@ fn main() -> process::ExitCode {
     let pin = match gpio.get(settings.pin_number) {
         Ok(p) => p.into_input_pullup(),
         Err(e) => {
-            eprintln!("[!] Failed to access GPIO{}: {e}", settings.pin_number);
+            eprintln!("[!] Failed to setup GPIO{}: {e}", settings.pin_number);
             return process::ExitCode::FAILURE;
         }
     };
@@ -141,10 +132,11 @@ fn main() -> process::ExitCode {
                         last_failed_restored_batsign = None;
                         last_alarm_batsign = None;
                         last_failed_alarm_batsign = None;
+                        thread::sleep(settings.poll_interval);
                         continue;
                     }
 
-                    match batsign::send_batsign(&client, batsign_url, &batsign_restored_message) {
+                    match batsign::send_batsign(&client, batsign_url, batsign_restored_message) {
                         Ok(status) if status.is_success() => {
                             println!("Batsign sent; HTTP {status}");
                             last_restored_batsign = Some(now);
@@ -205,10 +197,11 @@ fn main() -> process::ExitCode {
                         last_failed_alarm_batsign = None;
                         last_restored_batsign = None;
                         last_failed_restored_batsign = None;
+                        thread::sleep(settings.poll_interval);
                         continue;
                     }
 
-                    match batsign::send_batsign(&client, batsign_url, &batsign_alarm_message) {
+                    match batsign::send_batsign(&client, batsign_url, batsign_alarm_message) {
                         Ok(status) if status.is_success() => {
                             println!("Batsign sent; HTTP {status}");
                             last_alarm_batsign = Some(now);

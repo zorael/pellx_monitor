@@ -1,5 +1,6 @@
 use confy::get_configuration_file_path;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use std::time;
 
 use crate::defaults;
@@ -7,6 +8,7 @@ use crate::settings::Settings;
 
 /// Configuration file structure, which overrides default settings and is overridden by CLI args.
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct FileConfig {
     /// GPIO pin number to monitor.
     pub pin_number: Option<u8>,
@@ -34,17 +36,17 @@ pub struct FileConfig {
     /// Batsign restored message template string.
     pub batsign_restored_message_template: Option<String>,
 
-    /// Minimum time between sending mails.
+    /// Minimum time between sending notifications.
     #[serde(with = "humantime_serde")]
     pub time_between_batsigns: Option<time::Duration>,
 
-    /// Time to wait before retrying to send a mail after a failure.
+    /// Time to wait before retrying to send a notification after a failure.
     #[serde(with = "humantime_serde")]
     pub time_between_batsigns_retry: Option<time::Duration>,
 }
 
-/// Default values for the configuration file, required by confy but not used directly.
 impl Default for FileConfig {
+    /// Default values for the configuration file, required by confy but not used directly.
     fn default() -> Self {
         Self {
             pin_number: None,
@@ -62,6 +64,7 @@ impl Default for FileConfig {
 }
 
 impl From<&Settings> for FileConfig {
+    /// Converts the resolved settings into a FileConfig, which can be saved to disk. This is used when the user wants to save the current configuration.
     fn from(s: &Settings) -> Self {
         Self {
             pin_number: Some(s.pin_number),
@@ -78,30 +81,46 @@ impl From<&Settings> for FileConfig {
     }
 }
 
-/// Reads the configuration file. If a filename is provided, it tries to read from that path. Otherwise, it uses confy's default path resolution.
-pub fn read_configuration_file(filename: &Option<String>) -> Result<FileConfig, confy::ConfyError> {
-    match filename {
-        Some(f) => confy::load_path(f),
+/// Resolves the configuration file path, returning the filename and an optional PathBuf. If a filename is provided, it uses that. Otherwise, it uses confy's default path resolution.
+pub fn resolve_config_file(filename: &Option<String>) -> (String, Option<PathBuf>) {
+    let pathbuf = match filename {
+        Some(f) => PathBuf::from(f),
         None => {
-            if !get_configuration_file_path(
-                defaults::PROGRAM_ARG0,
-                defaults::CONFIGURATION_FILENAME_SANS_TOML,
-            )
-            .expect("configuration file path resolution")
-            .exists()
-            {
-                return Ok(FileConfig::from(&Settings::default()));
-            }
+            get_configuration_file_path(defaults::PROGRAM_ARG0, defaults::CONFIG_FILENAME_SANS_TOML)
+                .expect("configuration file path resolution")
+        }
+    };
 
-            confy::load(
-                defaults::PROGRAM_ARG0,
-                defaults::CONFIGURATION_FILENAME_SANS_TOML,
-            )
+    let path_string = pathbuf.to_string_lossy().into_owned();
+
+    (path_string, Some(pathbuf))
+}
+
+/// Reads the configuration file. If a filename is provided, it tries to read from that path. Otherwise, it uses confy's default path resolution.
+pub fn read_config_file(
+    filename: &Option<String>,
+) -> Result<Option<FileConfig>, confy::ConfyError> {
+    match filename {
+        Some(f) => {
+            let cfg = confy::load_path(f)?;
+            Ok(Some(cfg))
+        }
+        None => {
+            let (_, pathbuf) = resolve_config_file(filename);
+            let pathbuf = pathbuf.expect("config file path resolution");
+
+            if pathbuf.exists() {
+                let cfg = confy::load(defaults::PROGRAM_ARG0, defaults::CONFIG_FILENAME_SANS_TOML)?;
+                Ok(Some(cfg))
+            } else {
+                Ok(None)
+            }
         }
     }
 }
 
-pub fn save_configuration_file(
+/// Saves the configuration file. If a filename is provided, it tries to save to that path. Otherwise, it uses confy's default path resolution.
+pub fn save_config_file(
     filename: &Option<String>,
     cfg: &FileConfig,
 ) -> Result<(), confy::ConfyError> {
@@ -109,7 +128,7 @@ pub fn save_configuration_file(
         Some(f) => confy::store_path(f, cfg),
         None => confy::store(
             defaults::PROGRAM_ARG0,
-            defaults::CONFIGURATION_FILENAME_SANS_TOML,
+            defaults::CONFIG_FILENAME_SANS_TOML,
             cfg,
         ),
     }

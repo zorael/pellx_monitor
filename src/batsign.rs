@@ -43,8 +43,8 @@ pub fn get_batsign_message(subject: &str) -> String {
 pub fn send_batsign(
     client: &Client,
     url: &str,
-    message: &str,
+    message: String,
 ) -> Result<reqwest::StatusCode, reqwest::Error> {
-    let res = client.post(url).body(message.to_string()).send()?;
+    let res = client.post(url).body(message).send()?;
     Ok(res.status())
 }
