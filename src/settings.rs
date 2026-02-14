@@ -95,9 +95,6 @@ impl Settings {
         if !self.dry_run {
             match self.batsign_url.as_deref().map(str::trim) {
                 Some("") => vec.push("Batsign URL must not be empty.".to_string()),
-                Some(url) if url == defaults::DEFAULT_BATSIGN_URL => {
-                    vec.push("Batsign URL is required.".to_string());
-                }
                 Some(url) if !url.starts_with("http://") && !url.starts_with("https://") => {
                     vec.push("Batsign URL must start with http:// or https://.".to_string())
                 }
