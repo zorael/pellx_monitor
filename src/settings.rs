@@ -47,7 +47,7 @@ impl Default for Settings {
             hold: defaults::DEFAULT_HOLD,
             time_between_batsigns: defaults::DEFAULT_TIME_BETWEEN_BATSIGNS,
             time_between_batsigns_retry: defaults::DEFAULT_TIME_BETWEEN_BATSIGNS_RETRY,
-            batsign_url: None,
+            batsign_url: Some(defaults::DEFAULT_BATSIGN_URL.to_string()),
             batsign_alarm_subject: Some(defaults::DEFAULT_ALARM_SUBJECT.to_string()),
             batsign_alarm_message_template: Some(
                 defaults::DEFAULT_ALARM_MESSAGE_TEMPLATE.to_string(),
@@ -86,6 +86,9 @@ impl Settings {
 
         match self.batsign_url.as_deref().map(str::trim) {
             Some("") => vec.push("Batsign URL must not be empty.".to_string()),
+            Some(url) if url == defaults::DEFAULT_BATSIGN_URL => {
+                vec.push("Batsign URL is required.".to_string());
+            }
             Some(url) if !url.starts_with("http://") && !url.starts_with("https://") => {
                 vec.push("Batsign URL must start with http:// or https://.".to_string())
             }

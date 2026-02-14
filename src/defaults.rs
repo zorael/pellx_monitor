@@ -29,6 +29,9 @@ pub const DEFAULT_RESTORED_SUBJECT: &str = "PellX Restored";
 /// Default message template for the Batsign message when the alarm is restored.
 pub const DEFAULT_RESTORED_MESSAGE_TEMPLATE: &str = "Restored at {timestamp}. Pin is now LOW.";
 
+/// Default and dummy Batsign API URL.
+pub const DEFAULT_BATSIGN_URL: &str = "https://batsign.me/<your-unique-url>";
+
 /// Program name string.
 pub const PROGRAM_NAME: &str = "PellX Monitor";
 

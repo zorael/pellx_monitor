@@ -5,38 +5,51 @@ mod defaults;
 mod settings;
 
 use clap::Parser;
+use confy::get_configuration_file_path;
 use reqwest::blocking::Client;
 use rppal::gpio::{Gpio, Level};
 use std::time::Instant;
 use std::{process, thread};
 
-use crate::cli::Cli;
-use crate::settings::{Settings, apply_cli, apply_file};
-
 /// Program entrypoint.
 fn main() -> process::ExitCode {
-    let cli = Cli::parse();
-    let from_file = config::read_configuration_file();
-    let mut settings = Settings::default();
+    let cli = cli::Cli::parse();
 
-    settings = apply_file(settings, from_file);
-    settings = apply_cli(settings, cli.clone());
+    let cfg = match config::read_configuration_file(&cli.config) {
+        Ok(c) => Some(c),
+        Err(e) => {
+            eprintln!("[!] Failed to read configuration file: {e}");
+            return process::ExitCode::FAILURE;
+        }
+    };
+
+    let settings = settings::Settings::default();
+    let settings = settings::apply_file(settings, cfg.clone());
+    let settings = settings::apply_cli(settings, cli.clone());
 
     if cli.save {
-        match confy::store(
-            defaults::PROGRAM_ARG0,
-            defaults::CONFIGURATION_TOML,
-            settings,
-        ) {
+        let cfg = config::FileConfig::from(&settings);
+
+        let file_saved_to = match &cli.config {
+            Some(filename) => filename,
+            None => {
+                &get_configuration_file_path(defaults::PROGRAM_ARG0, defaults::CONFIGURATION_TOML)
+                    .expect("configuration file path resolution")
+                    .to_string_lossy()
+                    .to_string()
+            }
+        };
+
+        match config::save_configuration_file(&cli.config, &cfg) {
             Ok(()) => {
-                println!("Configuration file written.");
+                println!("Configuration file written to {}.", file_saved_to);
                 return process::ExitCode::SUCCESS;
             }
             Err(e) => {
                 eprintln!("[!] Failed to write configuration: {e}");
                 return process::ExitCode::FAILURE;
             }
-        }
+        };
     }
 
     if let Err(vec) = settings.sanity_check() {
