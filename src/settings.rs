@@ -141,6 +141,60 @@ impl Settings {
 
         if vec.is_empty() { Ok(()) } else { Err(vec) }
     }
+
+    /// Print the settings in a human-readable format.
+    pub fn print(&self) {
+        println!("Pin number:            {}", self.pin_number);
+
+        println!(
+            "Poll interval:         {}",
+            humantime::format_duration(self.poll_interval)
+        );
+
+        println!(
+            "Hold:                  {}",
+            humantime::format_duration(self.hold)
+        );
+
+        println!(
+            "Time between mails:    {}",
+            humantime::format_duration(self.time_between_batsigns)
+        );
+
+        println!(
+            "Mail retry time:       {}",
+            humantime::format_duration(self.time_between_batsigns_retry)
+        );
+
+        println!(
+            "Batsign URL:           {}",
+            self.batsign_url.as_deref().unwrap_or("None")
+        );
+
+        println!(
+            "Alarm subject:         {}",
+            self.batsign_alarm_subject.as_deref().unwrap_or("None")
+        );
+
+        println!(
+            "Restored subject:      {}",
+            self.batsign_restored_subject.as_deref().unwrap_or("None")
+        );
+
+        println!(
+            "Alarm template:        {}",
+            self.batsign_alarm_message_template
+                .as_deref()
+                .unwrap_or("None")
+        );
+
+        println!(
+            "Restored template:     {}",
+            self.batsign_restored_message_template
+                .as_deref()
+                .unwrap_or("None")
+        );
+    }
 }
 
 /// Applies config file settings to the default settings, returning the resulting settings.

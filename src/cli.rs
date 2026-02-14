@@ -42,6 +42,10 @@ pub struct Cli {
     #[arg(long)]
     pub debug: bool,
 
+    /// Show the resolved configuration and exit
+    #[arg(long)]
+    pub show: bool,
+
     /// Specify an alternate configuration file
     #[arg(short = 'c', long)]
     pub config: Option<String>,

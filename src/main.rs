@@ -26,6 +26,11 @@ fn main() -> process::ExitCode {
     let settings = settings::apply_file(settings, cfg.clone());
     let settings = settings::apply_cli(settings, cli.clone());
 
+    if cli.show {
+        settings.print();
+        return process::ExitCode::SUCCESS;
+    }
+
     if cli.save {
         let cfg = config::FileConfig::from(&settings);
 
@@ -90,20 +95,7 @@ fn main() -> process::ExitCode {
     let mut last_restored_batsign: Option<Instant> = None;
     let mut last_failed_restored_batsign: Option<Instant> = None;
 
-    println!("GPIO pin number:    {}", settings.pin_number);
-    println!(
-        "Poll interval:      {}",
-        humantime::format_duration(settings.poll_interval)
-    );
-    println!(
-        "Hold to qualify:    {}",
-        humantime::format_duration(settings.hold)
-    );
-    println!(
-        "Time between mails: {}",
-        humantime::format_duration(settings.time_between_batsigns)
-    );
-    println!("Batsign URL:        {}", batsign_url);
+    settings.print();
     println!();
 
     loop {
