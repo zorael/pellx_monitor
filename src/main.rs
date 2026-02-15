@@ -25,7 +25,17 @@ fn main() -> process::ExitCode {
 
     let settings = settings::Settings::default();
     let settings = settings::apply_file(settings, cfg); //.clone());
-    let settings = settings::apply_cli(settings, &cli);
+    let mut settings = settings::apply_cli(settings, &cli);
+
+    settings.resolve_template_paths();
+
+    match settings.load_resources() {
+        Ok(()) => (),
+        Err(e) => {
+            eprintln!("[!] Failed to load resources: {e}");
+            return process::ExitCode::FAILURE;
+        }
+    };
 
     if cli.show {
         settings.print();
@@ -35,17 +45,61 @@ fn main() -> process::ExitCode {
     if cli.save {
         let cfg = config::FileConfig::from(&settings);
         let (filename, _) = config::resolve_config_file(&cli.config);
+        let mut success = true;
 
         match config::save_config_file(&cli.config, &cfg) {
             Ok(()) => {
                 println!("Configuration file written to `{filename}`.");
-                return process::ExitCode::SUCCESS;
             }
             Err(e) => {
                 eprintln!("[!] Failed to write configuration to `{filename}`: {e}");
-                return process::ExitCode::FAILURE;
+                success = false;
             }
         };
+
+        match config::save_resource_file(
+            &settings.alarm_template_filename,
+            &settings.batsign_alarm_template,
+        ) {
+            Ok(()) => {
+                println!(
+                    "Alarm template file written to `{}`.",
+                    settings.alarm_template_filename
+                );
+            }
+            Err(e) => {
+                eprintln!(
+                    "[!] Failed to write alarm template file `{}`: {e}",
+                    settings.alarm_template_filename
+                );
+                success = false;
+            }
+        };
+
+        match config::save_resource_file(
+            &settings.restored_template_filename,
+            &settings.batsign_restored_template,
+        ) {
+            Ok(()) => {
+                println!(
+                    "Restored template file written to `{}`.",
+                    settings.restored_template_filename
+                );
+            }
+            Err(e) => {
+                eprintln!(
+                    "[!] Failed to write restored template file `{}`: {e}",
+                    settings.restored_template_filename
+                );
+                success = false;
+            }
+        };
+
+        if success {
+            return process::ExitCode::SUCCESS;
+        } else {
+            return process::ExitCode::FAILURE;
+        }
     }
 
     if let Err(vec) = settings.sanity_check() {
@@ -76,7 +130,6 @@ fn main() -> process::ExitCode {
         }
     };
 
-    let batsign_url = settings.batsign_url.as_deref().unwrap();
     let client = Client::new();
 
     let mut high_since: Option<Instant> = None;
@@ -118,15 +171,8 @@ fn main() -> process::ExitCode {
                         println!("...should send restored batsign!");
                     }
 
-                    let batsign_restored_message = batsign::get_batsign_message(
-                        settings.batsign_restored_subject.as_deref().unwrap(),
-                    );
-
                     if settings.dry_run {
-                        println!(
-                            "Dry run: would send restored Batsign with subject '{}'",
-                            settings.batsign_restored_subject.as_deref().unwrap()
-                        );
+                        println!("Dry run: would otherwise have sent restored Batsign");
 
                         last_restored_batsign = Some(now);
                         last_failed_restored_batsign = None;
@@ -136,20 +182,35 @@ fn main() -> process::ExitCode {
                         continue;
                     }
 
-                    match batsign::send_batsign(&client, batsign_url, batsign_restored_message) {
-                        Ok(status) if status.is_success() => {
+                    let batsign_restored_message = batsign::format_batsign_message(
+                        &settings.batsign_restored_template,
+                        &settings,
+                        &low_since.unwrap_or_else(Instant::now),
+                    );
+
+                    let statuses = match batsign::send_batsign(
+                        &client,
+                        &settings.batsign_urls,
+                        batsign_restored_message,
+                    ) {
+                        Ok(statuses) => statuses,
+                        Err(e) => {
+                            eprintln!("[!] Could not reach Batsign: {e}");
+                            last_failed_restored_batsign = Some(now);
+                            thread::sleep(settings.poll_interval);
+                            continue;
+                        }
+                    };
+
+                    for status in statuses {
+                        if status.is_success() {
                             println!("Batsign sent; HTTP {status}");
                             last_restored_batsign = Some(now);
                             last_failed_restored_batsign = None;
                             last_alarm_batsign = None;
                             last_failed_alarm_batsign = None;
-                        }
-                        Ok(status) => {
+                        } else {
                             eprintln!("[!] Batsign returned error; HTTP {status}");
-                            last_failed_restored_batsign = Some(now);
-                        }
-                        Err(e) => {
-                            eprintln!("[!] Could not reach Batsign: {e}");
                             last_failed_restored_batsign = Some(now);
                         }
                     }
@@ -172,7 +233,7 @@ fn main() -> process::ExitCode {
                 let now = Instant::now();
                 low_since = None;
 
-                if batsign::should_send_batsign(
+                if batsign::should_send_alarm_batsign(
                     now,
                     last_alarm_batsign,
                     last_failed_alarm_batsign,
@@ -183,15 +244,8 @@ fn main() -> process::ExitCode {
                         println!("...should send batsign!");
                     }
 
-                    let batsign_alarm_message = batsign::get_batsign_message(
-                        settings.batsign_alarm_subject.as_deref().unwrap(),
-                    );
-
                     if settings.dry_run {
-                        println!(
-                            "Dry run: would send alarm Batsign with subject '{}'",
-                            settings.batsign_alarm_subject.as_deref().unwrap()
-                        );
+                        println!("Dry run: would otherwise have sent alarm Batsign");
 
                         last_alarm_batsign = Some(now);
                         last_failed_alarm_batsign = None;
@@ -201,20 +255,35 @@ fn main() -> process::ExitCode {
                         continue;
                     }
 
-                    match batsign::send_batsign(&client, batsign_url, batsign_alarm_message) {
-                        Ok(status) if status.is_success() => {
-                            println!("Batsign sent; HTTP {status}");
+                    let batsign_alarm_message = batsign::format_batsign_message(
+                        &settings.batsign_alarm_template,
+                        &settings,
+                        &high_since.unwrap_or_else(Instant::now),
+                    );
+
+                    let statuses = match batsign::send_batsign(
+                        &client,
+                        &settings.batsign_urls,
+                        batsign_alarm_message,
+                    ) {
+                        Ok(statuses) => statuses,
+                        Err(e) => {
+                            eprintln!("[!] Could not reach Batsign: {e}");
+                            last_failed_alarm_batsign = Some(now);
+                            thread::sleep(settings.poll_interval);
+                            continue;
+                        }
+                    };
+
+                    for status in statuses {
+                        if status.is_success() {
+                            println!("Batsign success, response was HTTP {status}");
                             last_alarm_batsign = Some(now);
                             last_failed_alarm_batsign = None;
                             last_restored_batsign = None;
                             last_failed_restored_batsign = None;
-                        }
-                        Ok(status) => {
-                            eprintln!("[!] Batsign returned error; HTTP {status}");
-                            last_failed_alarm_batsign = Some(now);
-                        }
-                        Err(e) => {
-                            eprintln!("[!] Could not reach Batsign: {e}");
+                        } else {
+                            eprintln!("[!] Batsign error, response was HTTP {status}");
                             last_failed_alarm_batsign = Some(now);
                         }
                     }

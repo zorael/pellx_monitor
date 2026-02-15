@@ -50,6 +50,10 @@ pub struct Cli {
     #[arg(short = 'c', long, value_name = "path to file")]
     pub config: Option<String>,
 
+    /// Specify an alternate resource directory
+    /*#[arg(short = 'r', long, value_name = "path to directory")]
+    pub resource_dir: Option<String>,*/
+
     /// Write the resolved configuration to disk
     #[arg(long)]
     pub save: bool,

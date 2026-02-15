@@ -16,22 +16,6 @@ pub const DEFAULT_TIME_BETWEEN_BATSIGNS: Duration = Duration::from_secs(6 * 3600
 /// Default time to wait before retrying to send a mail after a failure.
 pub const DEFAULT_TIME_BETWEEN_BATSIGNS_RETRY: Duration = Duration::from_secs(5 * 60); // 5 min
 
-/// Default subject line for the Batsign message.
-pub const DEFAULT_ALARM_SUBJECT: &str = "PellX Alarm";
-
-/// Default message template for the Batsign message.
-pub const DEFAULT_ALARM_MESSAGE_TEMPLATE: &str =
-    "Triggered at {timestamp}. Pin has been HIGH for {duration}.";
-
-/// Default subject line for the Batsign message when the alarm is restored.
-pub const DEFAULT_RESTORED_SUBJECT: &str = "PellX Restored";
-
-/// Default message template for the Batsign message when the alarm is restored.
-pub const DEFAULT_RESTORED_MESSAGE_TEMPLATE: &str = "Restored at {timestamp}. Pin is now LOW.";
-
-/// Default and dummy Batsign API URL.
-pub const DEFAULT_BATSIGN_URL: &str = "<your-unique-url>";
-
 /// Program name string.
 pub const PROGRAM_NAME: &str = "PellX Monitor";
 
@@ -57,3 +41,19 @@ pub const ABOUT: &str = concat!(
 
 /// Configuration file name, used by confy.
 pub const CONFIG_FILENAME_SANS_TOML: &str = "config";
+
+/// Resource file name for Batsign URLs.
+pub const BATSIGNS_FILENAME: &str = "batsigns.url";
+
+/// Resource file name for the alarm message template.
+pub const ALARM_TEMPLATE_FILENAME: &str = "alarm_message_template.txt";
+
+/// Resource file name for the restored message template.
+pub const RESTORED_TEMPLATE_FILENAME: &str = "restored_message_template.txt";
+
+/// Default alarm message template.
+pub const ALARM_TEMPLATE: &str =
+    "Subject: PellX Alarm\nPellets burner has been in an error state for {since}.\n";
+
+/// Default restored message template.
+pub const RESTORED_TEMPLATE: &str = "Subject: PellX Restored\nPellets burner has been restored.\n";

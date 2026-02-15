@@ -1,7 +1,7 @@
 use confy::get_configuration_file_path;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::time;
+use std::{fs, io, time};
 
 use crate::defaults;
 use crate::settings::Settings;
@@ -21,21 +21,6 @@ pub struct FileConfig {
     #[serde(with = "humantime_serde")]
     pub hold: Option<time::Duration>,
 
-    /// Batsign URL to send the alert to.
-    pub batsign_url: Option<String>,
-
-    /// Subject line for the Batsign alarm message.
-    pub batsign_alarm_subject: Option<String>,
-
-    /// Batsign alarm message template string.
-    pub batsign_alarm_message_template: Option<String>,
-
-    /// Subject line for the Batsign restored message.
-    pub batsign_restored_subject: Option<String>,
-
-    /// Batsign restored message template string.
-    pub batsign_restored_message_template: Option<String>,
-
     /// Minimum time between sending notifications.
     #[serde(with = "humantime_serde")]
     pub time_between_batsigns: Option<time::Duration>,
@@ -52,11 +37,6 @@ impl Default for FileConfig {
             pin_number: None,
             poll_interval: None,
             hold: None,
-            batsign_url: None,
-            batsign_alarm_subject: None,
-            batsign_alarm_message_template: None,
-            batsign_restored_subject: None,
-            batsign_restored_message_template: None,
             time_between_batsigns: None,
             time_between_batsigns_retry: None,
         }
@@ -70,11 +50,6 @@ impl From<&Settings> for FileConfig {
             pin_number: Some(s.pin_number),
             poll_interval: Some(s.poll_interval),
             hold: Some(s.hold),
-            batsign_url: s.batsign_url.clone(),
-            batsign_alarm_subject: s.batsign_alarm_subject.clone(),
-            batsign_alarm_message_template: s.batsign_alarm_message_template.clone(),
-            batsign_restored_subject: s.batsign_restored_subject.clone(),
-            batsign_restored_message_template: s.batsign_restored_message_template.clone(),
             time_between_batsigns: Some(s.time_between_batsigns),
             time_between_batsigns_retry: Some(s.time_between_batsigns_retry),
         }
@@ -132,4 +107,65 @@ pub fn save_config_file(
             cfg,
         ),
     }
+}
+
+/// Resolves the configuration directory path, returning the directory as a string and an optional PathBuf. This is used for operations that need to know the config directory, such as saving the config file.
+pub fn resolve_config_directory() -> (String, PathBuf) {
+    let (_, pathbuf) = resolve_config_file(&None);
+    let mut pathbuf = pathbuf.expect("config file path resolution");
+
+    pathbuf.pop();
+
+    let path_string = pathbuf.to_string_lossy().into_owned();
+
+    (path_string, pathbuf)
+}
+
+/// Reads lines from a file, returning a vector of non-empty, non-comment lines. This is used for reading the Batsigns file.
+pub fn read_lines(filename: &str) -> io::Result<Vec<String>> {
+    let s = fs::read_to_string(filename)?;
+    let v = s
+        .split('\n')
+        .map(|l| l.trim().to_string())
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        .collect();
+    Ok(v)
+}
+
+/// Resolves the path to a resource file (such as the Batsigns file or message templates), returning the filename as a string and an optional PathBuf. The file is expected to be located in the same directory as the configuration file.
+pub fn resolve_resource_file(filename: &str) -> (String, PathBuf) {
+    let (_, config_dir) = resolve_config_directory();
+    let file_pathbuf = config_dir.join(filename);
+    let file_path_str = file_pathbuf.to_str().unwrap_or(filename).to_string();
+
+    (file_path_str, file_pathbuf)
+}
+
+/// Reads the Batsigns file, which contains a list of URLs to send notifications to. The file is expected to be located in the same directory as the configuration file.
+pub fn read_batsigns_file() -> io::Result<Vec<String>> {
+    let (batsigns_file_path_str, _) = resolve_resource_file(defaults::BATSIGNS_FILENAME);
+    let mut v = Vec::new();
+
+    match read_lines(&batsigns_file_path_str) {
+        Ok(lines) => {
+            for line in lines {
+                v.push(line);
+            }
+
+            Ok(v)
+        }
+        Err(e) => Err(e),
+    }
+}
+
+/// Reads a resource file (such as the message templates) and returns its contents as a string. The file is expected to be located in the same directory as the configuration file.
+pub fn read_resource_file(filename: &str) -> io::Result<String> {
+    let (file_path_str, _) = resolve_resource_file(filename);
+    fs::read_to_string(&file_path_str)
+}
+
+/// Saves a resource file (such as the message templates) with the given contents. The file is expected to be located in the same directory as the configuration file.
+pub fn save_resource_file(filename: &str, contents: &str) -> io::Result<()> {
+    let (_, file_pathbuf) = resolve_resource_file(filename);
+    fs::write(file_pathbuf, contents)
 }
