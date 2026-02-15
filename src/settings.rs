@@ -29,10 +29,10 @@ pub struct Settings {
     pub batsign_urls: Vec<String>,
 
     /// Path to the Batsign alarm message template file.
-    pub batsign_alarm_template: String,
+    pub alarm_template_body: String,
 
     /// Path to the Batsign restored message template file.
-    pub batsign_restored_template: String,
+    pub restored_template_body: String,
 
     /// Path to the resource directory, which contains the configuration file and other resources.
     pub resource_dir_pathbuf: PathBuf,
@@ -57,6 +57,7 @@ pub struct Settings {
 }
 
 impl Default for Settings {
+    /// Default values for settings, used as a base for applying config file and CLI overrides.
     fn default() -> Self {
         Self {
             pin_number: defaults::DEFAULT_PIN,
@@ -65,8 +66,8 @@ impl Default for Settings {
             time_between_batsigns: defaults::DEFAULT_TIME_BETWEEN_BATSIGNS,
             time_between_batsigns_retry: defaults::DEFAULT_TIME_BETWEEN_BATSIGNS_RETRY,
             batsign_urls: Vec::new(),
-            batsign_alarm_template: String::from(defaults::ALARM_TEMPLATE),
-            batsign_restored_template: String::from(defaults::RESTORED_TEMPLATE),
+            alarm_template_body: String::from(defaults::ALARM_TEMPLATE),
+            restored_template_body: String::from(defaults::RESTORED_TEMPLATE),
             resource_dir_pathbuf: PathBuf::new(),
             config_file_pathbuf: PathBuf::new(),
             batsign_urls_pathbuf: PathBuf::new(),
@@ -79,6 +80,7 @@ impl Default for Settings {
 }
 
 impl Settings {
+    /// Applies the resource directory setting, resolving the resource paths based on the provided directory or the default. This is used to set up the resource paths before loading resources from disk.
     pub fn with_resource_dir(mut self, resource_dir: &Option<String>) -> Self {
         match resource_dir {
             Some(dir) => self.resource_dir_pathbuf = PathBuf::from(dir),
@@ -160,6 +162,7 @@ impl Settings {
         );
     }
 
+    /// Resolves the resource paths based on the resource directory. This is used to set up the resource paths before loading resources from disk.
     pub fn resolve_resource_paths(&mut self) {
         self.config_file_pathbuf = self.resource_dir_pathbuf.join(defaults::CONFIG_FILENAME);
         self.batsign_urls_pathbuf = self.resource_dir_pathbuf.join(defaults::BATSIGNS_FILENAME);
@@ -171,10 +174,11 @@ impl Settings {
             .join(defaults::RESTORED_TEMPLATE_FILENAME);
     }
 
+    /// Loads the Batsign URLs and message templates from disk, returning an error if any of the files cannot be read. This is used to load the resources after resolving the resource paths.
     pub fn load_resources_from_disk(&mut self) -> io::Result<()> {
         self.batsign_urls = config::read_file_lines_into_vec(&self.batsign_urls_pathbuf)?;
-        self.batsign_alarm_template = fs::read_to_string(&self.alarm_template_pathbuf)?;
-        self.batsign_restored_template = fs::read_to_string(&self.restored_template_pathbuf)?;
+        self.alarm_template_body = fs::read_to_string(&self.alarm_template_pathbuf)?;
+        self.restored_template_body = fs::read_to_string(&self.restored_template_pathbuf)?;
         Ok(())
     }
 }

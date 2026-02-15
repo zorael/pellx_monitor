@@ -55,6 +55,7 @@ impl From<&Settings> for FileConfig {
     }
 }
 
+/// Deserializes the configuration file from disk, returning an optional FileConfig. This is used to load the configuration file at startup.
 pub fn deserialize_config_file(
     settings: &Settings,
 ) -> Result<Option<FileConfig>, confy::ConfyError> {
@@ -69,10 +70,6 @@ pub fn deserialize_config_file(
 
 /// Resolves the configuration directory path, returning the directory as a string and an optional PathBuf. This is used for operations that need to know the config directory, such as saving the config file.
 pub fn resolve_default_resource_directory() -> PathBuf {
-    /*let mut pathbuf = resolve_default_config_file();
-    pathbuf.pop();
-    pathbuf*/
-
     let base = env::var_os("XDG_CONFIG_HOME")
         .map(PathBuf::from)
         .or_else(|| env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))
@@ -81,6 +78,7 @@ pub fn resolve_default_resource_directory() -> PathBuf {
     base.join(defaults::PROGRAM_ARG0)
 }
 
+/// Reads a text file and returns its non-empty, non-comment lines as a vector of strings.
 pub fn read_file_lines_into_vec(pathbuf: &PathBuf) -> io::Result<Vec<String>> {
     let s = fs::read_to_string(pathbuf)?;
     let v = s
@@ -90,16 +88,3 @@ pub fn read_file_lines_into_vec(pathbuf: &PathBuf) -> io::Result<Vec<String>> {
         .collect();
     Ok(v)
 }
-
-/*
-/// Resolves the default config path according to XDG Base Directory Specification.
-fn resolve_default_config_path() -> Option<PathBuf> {
-    let base = env::var_os("XDG_CONFIG_HOME")
-        .map(PathBuf::from)
-        .or_else(|| env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))
-        .unwrap_or_else(|| PathBuf::from("."));
-
-    let base = base.join(defaults::PROGRAM_ARG0).join("config.toml");
-    Some(base)
-}
-*/
