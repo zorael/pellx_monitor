@@ -1,0 +1,12 @@
+[Unit]
+Description=PellX pellets burner monitor and error-reporter (%i)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/pellx_monitor -R %i
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=network.target
