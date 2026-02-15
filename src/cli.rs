@@ -30,10 +30,6 @@ pub struct Cli {
     #[arg(short = 'r', long, value_name = "duration", value_parser = humantime::parse_duration)]
     pub time_between_batsigns_retry: Option<Duration>,
 
-    /// Batsign URL to send alerts to (REQUIRED)
-    #[arg(short = 'u', long, value_name = "url")]
-    pub batsign_url: Option<String>,
-
     /// Perform a dry run without sending any notifications
     #[arg(long)]
     pub dry_run: bool,
@@ -46,13 +42,9 @@ pub struct Cli {
     #[arg(long)]
     pub show: bool,
 
-    /// Specify an alternate configuration file
-    #[arg(short = 'c', long, value_name = "path to file")]
-    pub config: Option<String>,
-
     /// Specify an alternate resource directory
-    /*#[arg(short = 'r', long, value_name = "path to directory")]
-    pub resource_dir: Option<String>,*/
+    #[arg(short = 'R', long, value_name = "path to directory")]
+    pub resource_dir: Option<String>,
 
     /// Write the resolved configuration to disk
     #[arg(long)]

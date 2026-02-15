@@ -1,6 +1,7 @@
 use serde::Serialize;
-use std::io;
+use std::path::PathBuf;
 use std::time::Duration;
+use std::{fs, io};
 
 use crate::cli::Cli;
 use crate::config; //::{FileConfig, read_resource_file};
@@ -33,9 +34,20 @@ pub struct Settings {
     /// Path to the Batsign restored message template file.
     pub batsign_restored_template: String,
 
-    pub alarm_template_filename: String,
+    /// Path to the resource directory, which contains the configuration file and other resources.
+    pub resource_dir_pathbuf: PathBuf,
 
-    pub restored_template_filename: String,
+    /// Path to the Batsign URLs file, resolved at runtime.
+    pub batsign_urls_pathbuf: PathBuf,
+
+    /// Path to the configuration file, resolved at runtime.
+    pub config_file_pathbuf: PathBuf,
+
+    /// Path to the alarm message template file, resolved at runtime.
+    pub alarm_template_pathbuf: PathBuf,
+
+    /// Path to the restored message template file, resolved at runtime.
+    pub restored_template_pathbuf: PathBuf,
 
     /// If true, the program will not send any Batsign notifications and will only print what it would do.
     pub dry_run: bool,
@@ -55,16 +67,28 @@ impl Default for Settings {
             batsign_urls: Vec::new(),
             batsign_alarm_template: String::from(defaults::ALARM_TEMPLATE),
             batsign_restored_template: String::from(defaults::RESTORED_TEMPLATE),
-            alarm_template_filename: defaults::ALARM_TEMPLATE_FILENAME.to_string(),
-            restored_template_filename: defaults::RESTORED_TEMPLATE_FILENAME.to_string(),
+            resource_dir_pathbuf: PathBuf::new(),
+            config_file_pathbuf: PathBuf::new(),
+            batsign_urls_pathbuf: PathBuf::new(),
+            alarm_template_pathbuf: PathBuf::new(),
+            restored_template_pathbuf: PathBuf::new(),
             dry_run: false,
             debug: false,
         }
     }
 }
 
-/// Sanity check settings, returning a list of errors if any are found.
 impl Settings {
+    pub fn with_resource_dir(mut self, resource_dir: &Option<String>) -> Self {
+        match resource_dir {
+            Some(dir) => self.resource_dir_pathbuf = PathBuf::from(dir),
+            None => self.resource_dir_pathbuf = config::resolve_default_resource_directory(),
+        }
+
+        self
+    }
+
+    /// Sanity check settings, returning a list of errors if any are found.
     pub fn sanity_check(&self) -> Result<(), Vec<String>> {
         let mut vec = Vec::new();
 
@@ -130,29 +154,33 @@ impl Settings {
         );
 
         println!("Batsign URLs:                 {:?}", self.batsign_urls);
+        println!(
+            "Resource directory:           {:?}",
+            self.resource_dir_pathbuf
+        );
     }
 
-    pub fn resolve_template_paths(&mut self) {
-        self.alarm_template_filename =
-            config::resolve_resource_file(defaults::ALARM_TEMPLATE_FILENAME).0;
-        self.restored_template_filename =
-            config::resolve_resource_file(defaults::RESTORED_TEMPLATE_FILENAME).0;
+    pub fn resolve_resource_paths(&mut self) {
+        self.config_file_pathbuf = self.resource_dir_pathbuf.join(defaults::CONFIG_FILENAME);
+        self.batsign_urls_pathbuf = self.resource_dir_pathbuf.join(defaults::BATSIGNS_FILENAME);
+        self.alarm_template_pathbuf = self
+            .resource_dir_pathbuf
+            .join(defaults::ALARM_TEMPLATE_FILENAME);
+        self.restored_template_pathbuf = self
+            .resource_dir_pathbuf
+            .join(defaults::RESTORED_TEMPLATE_FILENAME);
     }
 
-    pub fn load_resources(&mut self) -> io::Result<()> {
-        self.batsign_urls = config::read_batsigns_file()?;
-
-        self.batsign_alarm_template = config::read_resource_file(&self.alarm_template_filename)?;
-
-        self.batsign_restored_template =
-            config::read_resource_file(&self.restored_template_filename)?;
-
+    pub fn load_resources_from_disk(&mut self) -> io::Result<()> {
+        self.batsign_urls = config::read_file_lines_into_vec(&self.batsign_urls_pathbuf)?;
+        self.batsign_alarm_template = fs::read_to_string(&self.alarm_template_pathbuf)?;
+        self.batsign_restored_template = fs::read_to_string(&self.restored_template_pathbuf)?;
         Ok(())
     }
 }
 
 /// Applies config file settings to the default settings, returning the resulting settings.
-pub fn apply_file(mut s: Settings, file: Option<config::FileConfig>) -> Settings {
+pub fn apply_file(mut s: Settings, file: &Option<config::FileConfig>) -> Settings {
     let Some(file) = file else {
         return s;
     };

@@ -7,99 +7,222 @@ mod settings;
 use clap::Parser;
 use reqwest::blocking::Client;
 use rppal::gpio::{Gpio, Level};
+use std::fs;
 use std::time::Instant;
 use std::{process, thread};
 
+fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode> {
+    let mut settings = settings::Settings::default().with_resource_dir(&cli.resource_dir);
+
+    if !settings.resource_dir_pathbuf.exists() {
+        match fs::create_dir(&settings.resource_dir_pathbuf) {
+            Ok(()) => {
+                println!(
+                    "Resource directory `{}` created.",
+                    settings.resource_dir_pathbuf.to_str().unwrap()
+                );
+            }
+            Err(e) => {
+                eprintln!(
+                    "[!] Failed to create resource directory `{}`: {e}",
+                    settings.resource_dir_pathbuf.to_str().unwrap()
+                );
+                return Err(process::ExitCode::FAILURE);
+            }
+        };
+    }
+
+    println!("{:?}", settings.resource_dir_pathbuf);
+
+    settings.resolve_resource_paths();
+
+    match settings.load_resources_from_disk() {
+        Ok(()) => {}
+        Err(_) if cli.save => {}
+        Err(e) => {
+            eprintln!("[!] Failed to load resource files: {e}");
+            return Err(process::ExitCode::FAILURE);
+        }
+    }
+
+    let config = match config::deserialize_config_file(&settings) {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            eprintln!(
+                "[!] Failed to read configuration file `{}`: {e}",
+                settings.config_file_pathbuf.to_str().unwrap()
+            );
+            return Err(process::ExitCode::FAILURE);
+        }
+    };
+
+    settings = settings::apply_file(settings, &config);
+    settings = settings::apply_cli(settings, cli);
+
+    if cli.save {
+        let config = config::FileConfig::from(&settings);
+        match confy::store_path(&settings.config_file_pathbuf, config) {
+            Ok(()) => {}
+            Err(_) => {
+                eprintln!("[!] Failed to write configuration file.");
+                return Err(process::ExitCode::FAILURE);
+            }
+        };
+
+        match fs::write(
+            settings.batsign_urls_pathbuf,
+            settings.batsign_urls.join("\n"),
+        ) {
+            Ok(()) => {}
+            Err(_) => {
+                eprintln!("[!] Failed to write Batsigns URL file.");
+                return Err(process::ExitCode::FAILURE);
+            }
+        }
+
+        match fs::write(
+            settings.alarm_template_pathbuf,
+            &settings.batsign_alarm_template,
+        ) {
+            Ok(()) => {}
+            Err(_) => {
+                eprintln!("[!] Failed to write alarm template file.");
+                return Err(process::ExitCode::FAILURE);
+            }
+        }
+
+        match fs::write(
+            settings.restored_template_pathbuf,
+            &settings.batsign_restored_template,
+        ) {
+            Ok(()) => {}
+            Err(_) => {
+                eprintln!("[!] Failed to write restored template file.");
+                return Err(process::ExitCode::FAILURE);
+            }
+        }
+
+        return Err(process::ExitCode::SUCCESS);
+    }
+
+    settings = settings::apply_file(settings, &config); //.clone());
+    settings = settings::apply_cli(settings, cli);
+    Ok(settings)
+}
+
 /// Program entrypoint.
 fn main() -> process::ExitCode {
+    if !cfg!(target_os = "linux") {
+        eprintln!("[!] This program can only be run on Linux.");
+        return process::ExitCode::FAILURE;
+    }
+
     let cli = cli::Cli::parse();
+    let settings = match init_settings(&cli) {
+        Ok(s) => s,
+        Err(code) => return code,
+    };
 
-    let cfg = match config::read_config_file(&cli.config) {
-        Ok(c) => c,
+    /*let mut settings = settings::Settings::default().with_resource_dir(&cli.resource_dir);
+
+    if !settings.resource_dir_pathbuf.exists() {
+        match fs::create_dir(&settings.resource_dir_pathbuf) {
+            Ok(()) => {
+                println!(
+                    "Resource directory `{}` created.",
+                    settings.resource_dir_pathbuf.to_str().unwrap()
+                );
+            }
+            Err(e) => {
+                eprintln!(
+                    "[!] Failed to create resource directory `{}`: {e}",
+                    settings.resource_dir_pathbuf.to_str().unwrap()
+                );
+                return process::ExitCode::FAILURE;
+            }
+        };
+    }
+
+    println!("{:?}", settings.resource_dir_pathbuf);
+
+    settings.resolve_resource_paths();
+
+    match settings.load_resources_from_disk() {
+        Ok(()) => {}
+        Err(_) if cli.save => {}
         Err(e) => {
-            let (filename, _) = config::resolve_config_file(&cli.config);
-            eprintln!("[!] Failed to read configuration file `{filename}`: {e}");
+            eprintln!("[!] Failed to load resource files: {e}");
+            return process::ExitCode::FAILURE;
+        },
+    }
+
+    let config = match config::deserialize_config_file(&settings) {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            eprintln!(
+                "[!] Failed to read configuration file `{}`: {e}",
+                settings.config_file_pathbuf.to_str().unwrap()
+            );
             return process::ExitCode::FAILURE;
         }
     };
 
-    let settings = settings::Settings::default();
-    let settings = settings::apply_file(settings, cfg); //.clone());
-    let mut settings = settings::apply_cli(settings, &cli);
+    settings = settings::apply_file(settings, &config);
+    settings = settings::apply_cli(settings, &cli);
 
-    settings.resolve_template_paths();
+    if cli.save {
+        let config = config::FileConfig::from(&settings);
+        match confy::store_path(&settings.config_file_pathbuf, config) {
+            Ok(()) => {}
+            Err(_) => {
+                eprintln!("[!] Failed to write configuration file.");
+                return process::ExitCode::FAILURE;
+            }
+        };
 
-    match settings.load_resources() {
-        Ok(()) => (),
-        Err(e) => {
-            eprintln!("[!] Failed to load resources: {e}");
-            return process::ExitCode::FAILURE;
+        match fs::write(
+            settings.batsign_urls_pathbuf,
+            settings.batsign_urls.join("\n"),
+        ) {
+            Ok(()) => {}
+            Err(_) => {
+                eprintln!("[!] Failed to write Batsigns URL file.");
+                return process::ExitCode::FAILURE;
+            }
         }
-    };
+
+        match fs::write(
+            settings.alarm_template_pathbuf,
+            &settings.batsign_alarm_template,
+        ) {
+            Ok(()) => {}
+            Err(_) => {
+                eprintln!("[!] Failed to write alarm template file.");
+                return process::ExitCode::FAILURE;
+            }
+        }
+
+        match fs::write(
+            settings.restored_template_pathbuf,
+            &settings.batsign_restored_template,
+        ) {
+            Ok(()) => {}
+            Err(_) => {
+                eprintln!("[!] Failed to write restored template file.");
+                return process::ExitCode::FAILURE;
+            }
+        }
+
+        return process::ExitCode::SUCCESS;
+    }
+
+    settings = settings::apply_file(settings, &config); //.clone());
+    settings = settings::apply_cli(settings, &cli);
+    */
 
     if cli.show {
         settings.print();
         return process::ExitCode::SUCCESS;
-    }
-
-    if cli.save {
-        let cfg = config::FileConfig::from(&settings);
-        let (filename, _) = config::resolve_config_file(&cli.config);
-        let mut success = true;
-
-        match config::save_config_file(&cli.config, &cfg) {
-            Ok(()) => {
-                println!("Configuration file written to `{filename}`.");
-            }
-            Err(e) => {
-                eprintln!("[!] Failed to write configuration to `{filename}`: {e}");
-                success = false;
-            }
-        };
-
-        match config::save_resource_file(
-            &settings.alarm_template_filename,
-            &settings.batsign_alarm_template,
-        ) {
-            Ok(()) => {
-                println!(
-                    "Alarm template file written to `{}`.",
-                    settings.alarm_template_filename
-                );
-            }
-            Err(e) => {
-                eprintln!(
-                    "[!] Failed to write alarm template file `{}`: {e}",
-                    settings.alarm_template_filename
-                );
-                success = false;
-            }
-        };
-
-        match config::save_resource_file(
-            &settings.restored_template_filename,
-            &settings.batsign_restored_template,
-        ) {
-            Ok(()) => {
-                println!(
-                    "Restored template file written to `{}`.",
-                    settings.restored_template_filename
-                );
-            }
-            Err(e) => {
-                eprintln!(
-                    "[!] Failed to write restored template file `{}`: {e}",
-                    settings.restored_template_filename
-                );
-                success = false;
-            }
-        };
-
-        if success {
-            return process::ExitCode::SUCCESS;
-        } else {
-            return process::ExitCode::FAILURE;
-        }
     }
 
     if let Err(vec) = settings.sanity_check() {
@@ -138,6 +261,7 @@ fn main() -> process::ExitCode {
     let mut last_failed_alarm_batsign: Option<Instant> = None;
     let mut last_restored_batsign: Option<Instant> = None;
     let mut last_failed_restored_batsign: Option<Instant> = None;
+    let mut flips: u32 = 0;
 
     settings.print();
     println!();
@@ -153,7 +277,7 @@ fn main() -> process::ExitCode {
                     println!("LOW");
                 }
 
-                if !qualified {
+                if !qualified || flips == 0 {
                     thread::sleep(settings.poll_interval);
                     continue;
                 }
@@ -167,6 +291,8 @@ fn main() -> process::ExitCode {
                     last_failed_restored_batsign,
                     settings.time_between_batsigns_retry,
                 ) {
+                    flips += 1;
+
                     if settings.debug {
                         println!("...should send restored batsign!");
                     }
@@ -240,6 +366,8 @@ fn main() -> process::ExitCode {
                     settings.time_between_batsigns,
                     settings.time_between_batsigns_retry,
                 ) {
+                    flips += 1;
+
                     if settings.debug {
                         println!("...should send batsign!");
                     }
