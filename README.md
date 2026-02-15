@@ -2,7 +2,7 @@
 
 Monitor and error-reporter of a PellX pellets burner.
 
-Intended to be run on a Raspberry Pi connected via GPIO to terminal 1 and 2 on the controller board of a PellX burner. The connection between said terminals is closed when the machine is not in an error state, and opens on error and on power failure.
+Intended to be run on a Raspberry Pi connected via GPIO to terminal 1 and 2 on the controller board of a PellX burner. The connection between said terminals is closed when the machine is running normally and opens when it is in an error state (including power failures).
 
 Notifications are sent as short emails via [Batsign](https://batsign.me).
 
@@ -12,23 +12,25 @@ Notifications are sent as short emails via [Batsign](https://batsign.me).
 Usage: pellx_monitor [OPTIONS]
 
 Options:
-  -p, --pin-number <PIN_NUMBER>
+  -p, --pin-number <pin>
           Raspberry Pi GPIO pin number to monitor
-  -i, --poll-interval <POLL_INTERVAL>
+  -i, --poll-interval <duration>
           Poll interval between GPIO pin reads
-  -H, --hold <HOLD>
+  -H, --hold <duration>
           Duration the pin must be HIGH or LOW before qualifying as a valid change
-  -t, --time-between-batsigns <TIME_BETWEEN_BATSIGNS>
-          Minimum time between sending notification mails
-  -r, --time-between-batsigns-retry <TIME_BETWEEN_BATSIGNS_RETRY>
-          Time to wait before retrying to send a notification mail after a failure
-  -u, --batsign-url <BATSIGN_URL>
-          Batsign URL to send the alert to (REQUIRED)
+  -t, --time-between-batsigns <duration>
+          Minimum time between sending notifications
+  -r, --time-between-batsigns-retry <duration>
+          Time to wait before retrying to send a notification after a failure
+  -u, --batsign-url <url>
+          Batsign URL to send alerts to (REQUIRED)
       --dry-run
-          Perform a dry run without sending any mails
+          Perform a dry run without sending any notifications
       --debug
           Print additional debug information
-  -c, --config <CONFIG>
+      --show
+          Show the resolved configuration and exit
+  -c, --config <path to file>
           Specify an alternate configuration file
       --save
           Write the resolved configuration to disk
