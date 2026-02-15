@@ -22,16 +22,14 @@ Options:
           Minimum time between sending notifications
   -r, --time-between-batsigns-retry <duration>
           Time to wait before retrying to send a notification after a failure
-  -u, --batsign-url <url>
-          Batsign URL to send alerts to (REQUIRED)
       --dry-run
           Perform a dry run without sending any notifications
       --debug
           Print additional debug information
       --show
           Show the resolved configuration and exit
-  -c, --config <path to file>
-          Specify an alternate configuration file
+  -R, --resource-dir <path to directory>
+          Specify an alternate resource directory
       --save
           Write the resolved configuration to disk
 ```
