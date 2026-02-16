@@ -203,14 +203,26 @@ impl Settings {
 
     /// Loads the Batsign URLs and message templates from disk, returning an error if any of the files cannot be read. This is used to load the resources after resolving the resource paths.
     pub fn load_resources_from_disk(&mut self) -> io::Result<()> {
-        self.slack_alarm_template_body = fs::read_to_string(&self.slack_alarm_template_pathbuf)?;
+        self.slack_alarm_template_body = fs::read_to_string(&self.slack_alarm_template_pathbuf)?
+            .to_string()
+            .trim()
+            .to_string();
         self.slack_restored_template_body =
-            fs::read_to_string(&self.slack_restored_template_pathbuf)?;
+            fs::read_to_string(&self.slack_restored_template_pathbuf)?
+                .to_string()
+                .trim()
+                .to_string();
         self.batsign_urls = config::read_file_lines_into_vec(&self.batsign_urls_pathbuf)?;
         self.batsign_alarm_template_body =
-            fs::read_to_string(&self.batsign_alarm_template_pathbuf)?;
+            fs::read_to_string(&self.batsign_alarm_template_pathbuf)?
+                .to_string()
+                .trim()
+                .to_string();
         self.batsign_restored_template_body =
-            fs::read_to_string(&self.batsign_restored_template_pathbuf)?;
+            fs::read_to_string(&self.batsign_restored_template_pathbuf)?
+                .to_string()
+                .trim()
+                .to_string();
         Ok(())
     }
 }
