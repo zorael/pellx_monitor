@@ -8,7 +8,7 @@ use crate::config; //::{FileConfig, read_resource_file};
 use crate::defaults;
 
 /// Application settings, including defaults and sanity checks.
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct Settings {
     /// GPIO pin number to monitor.
     pub pin_number: u8,

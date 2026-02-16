@@ -42,6 +42,14 @@ fn main() -> process::ExitCode {
 
     print_banner();
 
+    if settings.debug {
+        println!("{:#?}", &settings);
+    } else {
+        settings.print();
+    }
+
+    println!();
+
     let gpio = match Gpio::new() {
         Ok(g) => g,
         Err(e) => {
@@ -69,9 +77,6 @@ fn main() -> process::ExitCode {
     let mut last_restored_batsign: Option<Instant> = None;
     let mut last_failed_restored_batsign: Option<Instant> = None;
     let mut flips: u32 = 0;
-
-    settings.print();
-    println!();
 
     loop {
         match pin.read() {
