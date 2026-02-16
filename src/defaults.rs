@@ -46,14 +46,30 @@ pub const CONFIG_FILENAME: &str = "config.toml";
 pub const BATSIGNS_FILENAME: &str = "batsigns.url";
 
 /// Resource file name for the alarm message template.
-pub const ALARM_TEMPLATE_FILENAME: &str = "alarm_message_template.txt";
+pub const BATSIGN_ALARM_TEMPLATE_FILENAME: &str = "batsign_alarm_message_template.txt";
 
 /// Resource file name for the restored message template.
-pub const RESTORED_TEMPLATE_FILENAME: &str = "restored_message_template.txt";
+pub const BATSIGN_RESTORED_TEMPLATE_FILENAME: &str = "batsign_restored_message_template.txt";
 
 /// Default alarm message template.
-pub const ALARM_TEMPLATE: &str =
+pub const BATSIGN_ALARM_TEMPLATE: &str =
     "Subject: PellX Alarm\nPellets burner has been in an error state for {since}.\n";
 
 /// Default restored message template.
-pub const RESTORED_TEMPLATE: &str = "Subject: PellX Restored\nPellets burner has been restored.\n";
+pub const BATSIGN_RESTORED_TEMPLATE: &str =
+    "Subject: PellX Restored\nPellets burner has been restored.\n";
+
+/// Placeholder Slack webhook URL, used in the default configuration and as a hint for users.
+pub const SLACK_WEBHOOK_URL_PLACEHOLDER: &str = "https://hooks.slack.com/services/your/webhook/url";
+
+/// Resource file name for the Slack alarm message template.
+pub const SLACK_ALARM_TEMPLATE_FILENAME: &str = "slack_alarm_message_template.txt";
+
+/// Resource file name for the Slack restored message template.
+pub const SLACK_RESTORED_TEMPLATE_FILENAME: &str = "slack_restored_message_template.txt";
+
+/// Default Slack alarm message template.
+pub const SLACK_ALARM_TEMPLATE: &str = "Pellets burner has been in an error state for {since}.";
+
+/// Default Slack restored message template.
+pub const SLACK_RESTORED_TEMPLATE: &str = "Pellets burner has been restored.";

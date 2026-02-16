@@ -27,6 +27,9 @@ pub struct FileConfig {
     /// Time to wait before retrying to send a notification after a failure.
     #[serde(with = "humantime_serde")]
     pub time_between_batsigns_retry: Option<time::Duration>,
+
+    /// Optional Slack webhook URL for sending notifications to Slack.
+    pub slack_webhook_url: Option<String>,
 }
 
 impl Default for FileConfig {
@@ -38,6 +41,7 @@ impl Default for FileConfig {
             hold: None,
             time_between_batsigns: None,
             time_between_batsigns_retry: None,
+            slack_webhook_url: None,
         }
     }
 }
@@ -51,6 +55,7 @@ impl From<&Settings> for FileConfig {
             hold: Some(s.hold),
             time_between_batsigns: Some(s.time_between_batsigns),
             time_between_batsigns_retry: Some(s.time_between_batsigns_retry),
+            slack_webhook_url: Some(s.slack_webhook_url.clone()),
         }
     }
 }
@@ -62,6 +67,7 @@ pub fn deserialize_config_file(
     let config_pathbuf = settings
         .resource_dir_pathbuf
         .join(defaults::CONFIG_FILENAME);
+
     match confy::load_path(config_pathbuf) {
         Ok(cfg) => Ok(Some(cfg)),
         Err(e) => Err(e),

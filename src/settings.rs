@@ -25,29 +25,40 @@ pub struct Settings {
     /// Time to wait before retrying to send a notification after a failure.
     pub time_between_batsigns_retry: Duration,
 
-    /// List of Batsign URLs to send notifications to.
-    pub batsign_urls: Vec<String>,
-
-    /// Path to the Batsign alarm message template file.
-    pub alarm_template_body: String,
-
-    /// Path to the Batsign restored message template file.
-    pub restored_template_body: String,
-
     /// Path to the resource directory, which contains the configuration file and other resources.
     pub resource_dir_pathbuf: PathBuf,
-
-    /// Path to the Batsign URLs file, resolved at runtime.
-    pub batsign_urls_pathbuf: PathBuf,
 
     /// Path to the configuration file, resolved at runtime.
     pub config_file_pathbuf: PathBuf,
 
+    /// Optional Slack webhook URL for sending notifications to Slack.
+    pub slack_webhook_url: String,
+
+    pub slack_alarm_template_pathbuf: PathBuf,
+
+    pub slack_restored_template_pathbuf: PathBuf,
+
+    pub slack_alarm_template_body: String,
+
+    pub slack_restored_template_body: String,
+
+    /// Path to the Batsign URLs file, resolved at runtime.
+    pub batsign_urls_pathbuf: PathBuf,
+
+    /// List of Batsign URLs to send notifications to.
+    pub batsign_urls: Vec<String>,
+
     /// Path to the alarm message template file, resolved at runtime.
-    pub alarm_template_pathbuf: PathBuf,
+    pub batsign_alarm_template_pathbuf: PathBuf,
 
     /// Path to the restored message template file, resolved at runtime.
-    pub restored_template_pathbuf: PathBuf,
+    pub batsign_restored_template_pathbuf: PathBuf,
+
+    /// Path to the Batsign alarm message template file.
+    pub batsign_alarm_template_body: String,
+
+    /// Path to the Batsign restored message template file.
+    pub batsign_restored_template_body: String,
 
     /// If true, the program will not send any Batsign notifications and will only print what it would do.
     pub dry_run: bool,
@@ -65,14 +76,19 @@ impl Default for Settings {
             hold: defaults::DEFAULT_HOLD,
             time_between_batsigns: defaults::DEFAULT_TIME_BETWEEN_BATSIGNS,
             time_between_batsigns_retry: defaults::DEFAULT_TIME_BETWEEN_BATSIGNS_RETRY,
-            batsign_urls: Vec::new(),
-            alarm_template_body: String::from(defaults::ALARM_TEMPLATE),
-            restored_template_body: String::from(defaults::RESTORED_TEMPLATE),
+            slack_webhook_url: String::from(defaults::SLACK_WEBHOOK_URL_PLACEHOLDER),
             resource_dir_pathbuf: PathBuf::new(),
             config_file_pathbuf: PathBuf::new(),
+            slack_alarm_template_pathbuf: PathBuf::new(),
+            slack_restored_template_pathbuf: PathBuf::new(),
+            slack_alarm_template_body: String::from(defaults::SLACK_ALARM_TEMPLATE),
+            slack_restored_template_body: String::from(defaults::SLACK_RESTORED_TEMPLATE),
             batsign_urls_pathbuf: PathBuf::new(),
-            alarm_template_pathbuf: PathBuf::new(),
-            restored_template_pathbuf: PathBuf::new(),
+            batsign_urls: Vec::new(),
+            batsign_alarm_template_body: String::from(defaults::BATSIGN_ALARM_TEMPLATE),
+            batsign_restored_template_body: String::from(defaults::BATSIGN_RESTORED_TEMPLATE),
+            batsign_alarm_template_pathbuf: PathBuf::new(),
+            batsign_restored_template_pathbuf: PathBuf::new(),
             dry_run: false,
             debug: false,
         }
@@ -165,20 +181,36 @@ impl Settings {
     /// Resolves the resource paths based on the resource directory. This is used to set up the resource paths before loading resources from disk.
     pub fn resolve_resource_paths(&mut self) {
         self.config_file_pathbuf = self.resource_dir_pathbuf.join(defaults::CONFIG_FILENAME);
+
+        self.slack_alarm_template_pathbuf = self
+            .resource_dir_pathbuf
+            .join(defaults::SLACK_ALARM_TEMPLATE_FILENAME);
+
+        self.slack_restored_template_pathbuf = self
+            .resource_dir_pathbuf
+            .join(defaults::SLACK_RESTORED_TEMPLATE_FILENAME);
+
         self.batsign_urls_pathbuf = self.resource_dir_pathbuf.join(defaults::BATSIGNS_FILENAME);
-        self.alarm_template_pathbuf = self
+
+        self.batsign_alarm_template_pathbuf = self
             .resource_dir_pathbuf
-            .join(defaults::ALARM_TEMPLATE_FILENAME);
-        self.restored_template_pathbuf = self
+            .join(defaults::BATSIGN_ALARM_TEMPLATE_FILENAME);
+
+        self.batsign_restored_template_pathbuf = self
             .resource_dir_pathbuf
-            .join(defaults::RESTORED_TEMPLATE_FILENAME);
+            .join(defaults::BATSIGN_RESTORED_TEMPLATE_FILENAME);
     }
 
     /// Loads the Batsign URLs and message templates from disk, returning an error if any of the files cannot be read. This is used to load the resources after resolving the resource paths.
     pub fn load_resources_from_disk(&mut self) -> io::Result<()> {
+        self.slack_alarm_template_body = fs::read_to_string(&self.slack_alarm_template_pathbuf)?;
+        self.slack_restored_template_body =
+            fs::read_to_string(&self.slack_restored_template_pathbuf)?;
         self.batsign_urls = config::read_file_lines_into_vec(&self.batsign_urls_pathbuf)?;
-        self.alarm_template_body = fs::read_to_string(&self.alarm_template_pathbuf)?;
-        self.restored_template_body = fs::read_to_string(&self.restored_template_pathbuf)?;
+        self.batsign_alarm_template_body =
+            fs::read_to_string(&self.batsign_alarm_template_pathbuf)?;
+        self.batsign_restored_template_body =
+            fs::read_to_string(&self.batsign_restored_template_pathbuf)?;
         Ok(())
     }
 }
@@ -207,6 +239,10 @@ pub fn apply_file(mut s: Settings, file: &Option<config::FileConfig>) -> Setting
 
     if let Some(time_between_batsigns_retry) = file.time_between_batsigns_retry {
         s.time_between_batsigns_retry = time_between_batsigns_retry;
+    }
+
+    if let Some(slack_webhook_url) = &file.slack_webhook_url {
+        s.slack_webhook_url = slack_webhook_url.clone();
     }
 
     s

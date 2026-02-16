@@ -3,12 +3,13 @@ mod cli;
 mod config;
 mod defaults;
 mod settings;
+mod slack;
 
 use clap::Parser;
 use reqwest::blocking::Client;
 use rppal::gpio::{Gpio, Level};
 use std::fs;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use std::{process, thread};
 
 /// Program entrypoint.
@@ -61,6 +62,8 @@ fn main() -> process::ExitCode {
 
     let mut high_since: Option<Instant> = None;
     let mut low_since: Option<Instant> = None;
+    let mut last_alarm_slack: Option<Instant> = None;
+    let mut last_restored_slack: Option<Instant> = None;
     let mut last_alarm_batsign: Option<Instant> = None;
     let mut last_failed_alarm_batsign: Option<Instant> = None;
     let mut last_restored_batsign: Option<Instant> = None;
@@ -89,7 +92,38 @@ fn main() -> process::ExitCode {
                 let now = Instant::now();
                 high_since = None;
 
-                if batsign::should_send_restored_batsign(
+                if last_restored_slack.is_none() {
+                    if settings.dry_run {
+                        println!("Dry run: would otherwise have sent alarm Slack notification");
+
+                        last_restored_slack = Some(now);
+                        last_alarm_slack = None;
+                        thread::sleep(settings.poll_interval);
+                        continue;
+                    }
+
+                    match &settings.slack_webhook_url {
+                        url if url.is_empty() => {}
+                        url if url == defaults::SLACK_WEBHOOK_URL_PLACEHOLDER => {}
+                        url => {
+                            match slack::send_slack_notification(
+                                &client,
+                                url,
+                                "Pellets tycks vid liv igen",
+                                slack::SLACK_SUCCESS_EMOJI,
+                            ) {
+                                Ok(()) => println!("Sent Slack notification"),
+                                Err(e) => eprintln!("[!] Failed to send Slack notification: {e}"),
+                            }
+
+                            last_restored_slack = Some(now);
+                            last_alarm_slack = None;
+                            flips += 1;
+                        }
+                    }
+                }
+
+                if should_send_restored_notification(
                     now,
                     last_restored_batsign,
                     last_failed_restored_batsign,
@@ -98,12 +132,11 @@ fn main() -> process::ExitCode {
                     flips += 1;
 
                     if settings.debug {
-                        println!("...should send restored batsign!");
+                        println!("...should send restored notification!");
                     }
 
                     if settings.dry_run {
-                        println!("Dry run: would otherwise have sent restored Batsign");
-
+                        println!("Dry run: would otherwise have sent restored notification");
                         last_restored_batsign = Some(now);
                         last_failed_restored_batsign = None;
                         last_alarm_batsign = None;
@@ -113,7 +146,7 @@ fn main() -> process::ExitCode {
                     }
 
                     let batsign_restored_message = batsign::format_batsign_message(
-                        &settings.restored_template_body,
+                        &settings.batsign_restored_template_body,
                         &settings,
                         &low_since.unwrap_or_else(Instant::now),
                     );
@@ -163,7 +196,38 @@ fn main() -> process::ExitCode {
                 let now = Instant::now();
                 low_since = None;
 
-                if batsign::should_send_alarm_batsign(
+                if last_alarm_slack.is_none() {
+                    if settings.dry_run {
+                        println!("Dry run: would otherwise have sent alarm Slack notification");
+
+                        last_alarm_slack = Some(now);
+                        last_restored_slack = None;
+                        thread::sleep(settings.poll_interval);
+                        continue;
+                    }
+
+                    match &settings.slack_webhook_url {
+                        url if url.is_empty() => {}
+                        url if url == defaults::SLACK_WEBHOOK_URL_PLACEHOLDER => {}
+                        url => {
+                            match slack::send_slack_notification(
+                                &client,
+                                url,
+                                "Pellets död?",
+                                slack::SLACK_ERROR_EMOJI,
+                            ) {
+                                Ok(()) => println!("Sent Slack notification"),
+                                Err(e) => eprintln!("[!] Failed to send Slack notification: {e}"),
+                            }
+
+                            last_alarm_slack = Some(now);
+                            last_restored_slack = None;
+                            flips += 1;
+                        }
+                    }
+                }
+
+                if should_send_alarm_notification(
                     now,
                     last_alarm_batsign,
                     last_failed_alarm_batsign,
@@ -173,11 +237,11 @@ fn main() -> process::ExitCode {
                     flips += 1;
 
                     if settings.debug {
-                        println!("...should send batsign!");
+                        println!("...should send notification!");
                     }
 
                     if settings.dry_run {
-                        println!("Dry run: would otherwise have sent alarm Batsign");
+                        println!("Dry run: would otherwise have sent alarm notification");
 
                         last_alarm_batsign = Some(now);
                         last_failed_alarm_batsign = None;
@@ -188,7 +252,7 @@ fn main() -> process::ExitCode {
                     }
 
                     let batsign_alarm_message = batsign::format_batsign_message(
-                        &settings.alarm_template_body,
+                        &settings.batsign_alarm_template_body,
                         &settings,
                         &high_since.unwrap_or_else(Instant::now),
                     );
@@ -285,6 +349,28 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         };
 
         match fs::write(
+            settings.slack_alarm_template_pathbuf,
+            &settings.slack_alarm_template_body,
+        ) {
+            Ok(()) => {}
+            Err(_) => {
+                eprintln!("[!] Failed to write Slack alarm template file.");
+                return Err(process::ExitCode::FAILURE);
+            }
+        }
+
+        match fs::write(
+            settings.slack_restored_template_pathbuf,
+            &settings.slack_restored_template_body,
+        ) {
+            Ok(()) => {}
+            Err(_) => {
+                eprintln!("[!] Failed to write Slack restored template file.");
+                return Err(process::ExitCode::FAILURE);
+            }
+        }
+
+        match fs::write(
             settings.batsign_urls_pathbuf,
             settings.batsign_urls.join("\n"),
         ) {
@@ -296,23 +382,23 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         }
 
         match fs::write(
-            settings.alarm_template_pathbuf,
-            &settings.alarm_template_body,
+            settings.batsign_alarm_template_pathbuf,
+            &settings.batsign_alarm_template_body,
         ) {
             Ok(()) => {}
             Err(_) => {
-                eprintln!("[!] Failed to write alarm template file.");
+                eprintln!("[!] Failed to write Batsign alarm template file.");
                 return Err(process::ExitCode::FAILURE);
             }
         }
 
         match fs::write(
-            settings.restored_template_pathbuf,
-            &settings.restored_template_body,
+            settings.batsign_restored_template_pathbuf,
+            &settings.batsign_restored_template_body,
         ) {
             Ok(()) => {}
             Err(_) => {
-                eprintln!("[!] Failed to write restored template file.");
+                eprintln!("[!] Failed to write Batsign restored template file.");
                 return Err(process::ExitCode::FAILURE);
             }
         }
@@ -333,4 +419,37 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
 fn print_banner() {
     let banner = format!("{} {}", defaults::PROGRAM_NAME, defaults::VERSION);
     println!("{}\n{}\n", banner, "=".repeat(banner.len()));
+}
+
+/// Determines if an alarm Batsign should be sent, based on the last successful and failed timestamps.
+pub fn should_send_alarm_notification(
+    now: Instant,
+    last: Option<Instant>,
+    last_failed: Option<Instant>,
+    time_between_batsigns: Duration,
+    time_between_batsigns_retry: Duration,
+) -> bool {
+    if let Some(last_failed) = last_failed {
+        return now.duration_since(last_failed) >= time_between_batsigns_retry;
+    }
+
+    if let Some(last) = last {
+        now.duration_since(last) >= time_between_batsigns
+    } else {
+        true
+    }
+}
+
+/// Determines if a restored Batsign should be sent, based on the last successful and failed timestamps.
+pub fn should_send_restored_notification(
+    now: Instant,
+    last: Option<Instant>,
+    last_failed: Option<Instant>,
+    time_between_batsigns_retry: Duration,
+) -> bool {
+    if let Some(last_failed) = last_failed {
+        return now.duration_since(last_failed) >= time_between_batsigns_retry;
+    }
+
+    last.is_none()
 }
