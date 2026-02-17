@@ -35,10 +35,10 @@ pub struct SlackSettings {
     pub webhook_url: String,
 
     /// Text body of the Slack alarm message template.
-    pub alarm_template_body: String,
+    pub alarm_message_template_body: String,
 
     /// Text body of the Slack restored message template.
-    pub restored_template_body: String,
+    pub restored_message_template_body: String,
 
     /// Minimum time between sending Slack notifications, to avoid spamming.
     pub notification_interval: Duration,
@@ -51,8 +51,10 @@ impl Default for SlackSettings {
     fn default() -> Self {
         Self {
             webhook_url: String::from(defaults::slack::DUMMY_WEBHOOK_URL),
-            alarm_template_body: String::from(defaults::slack::ALARM_MESSAGE_TEMPLATE_BODY),
-            restored_template_body: String::from(defaults::slack::RESTORED_MESSAGE_TEMPLATE_BODY),
+            alarm_message_template_body: String::from(defaults::slack::ALARM_MESSAGE_TEMPLATE_BODY),
+            restored_message_template_body: String::from(
+                defaults::slack::RESTORED_MESSAGE_TEMPLATE_BODY,
+            ),
             notification_interval: defaults::slack::NOTIFICATION_INTERVAL,
             retry_interval: defaults::slack::RETRY_INTERVAL,
         }
@@ -65,10 +67,10 @@ pub struct BatsignSettings {
     pub urls: Vec<String>,
 
     /// Path to the Batsign alarm message template file.
-    pub alarm_template_body: String,
+    pub alarm_message_template_body: String,
 
     /// Path to the Batsign restored message template file.
-    pub restored_template_body: String,
+    pub restored_message_template_body: String,
 
     /// Minimum time between sending notifications, to avoid spamming.
     pub notification_interval: Duration,
@@ -81,8 +83,12 @@ impl Default for BatsignSettings {
     fn default() -> Self {
         Self {
             urls: Vec::new(),
-            alarm_template_body: String::from(defaults::batsign::ALARM_MESSAGE_TEMPLATE_BODY),
-            restored_template_body: String::from(defaults::batsign::RESTORED_MESSAGE_TEMPLATE_BODY),
+            alarm_message_template_body: String::from(
+                defaults::batsign::ALARM_MESSAGE_TEMPLATE_BODY,
+            ),
+            restored_message_template_body: String::from(
+                defaults::batsign::RESTORED_MESSAGE_TEMPLATE_BODY,
+            ),
             notification_interval: defaults::batsign::NOTIFICATION_INTERVAL,
             retry_interval: defaults::batsign::RETRY_INTERVAL,
         }
@@ -293,14 +299,20 @@ impl Settings {
 
     /// Loads the Batsign URLs and message templates from disk, returning an error if any of the files cannot be read. This is used to load the resources after resolving the resource paths.
     pub fn load_resources_from_disk(&mut self) -> io::Result<()> {
-        self.slack.alarm_template_body = read_to_trimmed_string(&self.paths.slack_alarm_template)?;
-        self.slack.restored_template_body =
+        self.slack.alarm_message_template_body =
+            read_to_trimmed_string(&self.paths.slack_alarm_template)?;
+
+        self.slack.restored_message_template_body =
             read_to_trimmed_string(&self.paths.slack_restored_template)?;
+
         self.batsign.urls = config::read_file_lines_into_vec(&self.paths.batsign_urls)?;
-        self.batsign.alarm_template_body =
+
+        self.batsign.alarm_message_template_body =
             read_to_trimmed_string(&self.paths.batsign_alarm_template)?;
-        self.batsign.restored_template_body =
+
+        self.batsign.restored_message_template_body =
             read_to_trimmed_string(&self.paths.batsign_restored_template)?;
+
         Ok(())
     }
 }
@@ -315,24 +327,24 @@ pub fn apply_file(mut s: Settings, file: &Option<config::FileConfig>) -> Setting
     s.gpio.poll_interval = file.gpio.poll_interval;
     s.gpio.hold = file.gpio.hold;
 
-    if let Some(time_between_batsigns) = file.batsign.notification_interval {
-        s.batsign.notification_interval = time_between_batsigns;
-    }
-
-    if let Some(time_between_batsigns_retries) = file.batsign.retry_interval {
-        s.batsign.retry_interval = time_between_batsigns_retries;
-    }
-
-    if let Some(time_between_slack_notifications) = file.slack.notification_interval {
-        s.slack.notification_interval = time_between_slack_notifications;
-    }
-
-    if let Some(time_between_slack_notification_retries) = file.slack.retry_interval {
-        s.slack.retry_interval = time_between_slack_notification_retries;
-    }
-
     if let Some(slack_webhook_url) = &file.slack.webhook_url {
         s.slack.webhook_url = slack_webhook_url.clone();
+    }
+
+    if let Some(slack_notification_interval) = file.slack.notification_interval {
+        s.slack.notification_interval = slack_notification_interval;
+    }
+
+    if let Some(slack_retry_interval) = file.slack.retry_interval {
+        s.slack.retry_interval = slack_retry_interval;
+    }
+
+    if let Some(batsign_notification_interval) = file.batsign.notification_interval {
+        s.batsign.notification_interval = batsign_notification_interval;
+    }
+
+    if let Some(batsign_retry_interval) = file.batsign.retry_interval {
+        s.batsign.retry_interval = batsign_retry_interval;
     }
 
     s
@@ -340,6 +352,7 @@ pub fn apply_file(mut s: Settings, file: &Option<config::FileConfig>) -> Setting
 
 /// Applies CLI settings to the given settings, returning the resulting settings.
 pub fn apply_cli(mut s: Settings, cli: &Cli) -> Settings {
+    // Resource directory is applied separately in Settings::with_resource_dir, since it needs to be applied before resolving resource paths and loading resources from disk.
     /*if let Some(resource_dir) = &cli.resource_dir {
         s.paths.resource_dir = PathBuf::from(resource_dir);
     };*/

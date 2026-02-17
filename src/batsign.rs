@@ -30,14 +30,14 @@ pub fn should_send_batsign_notification(
     }
 
     match state.previous_failure {
-        Some(failure_time) if now.duration_since(failure_time) < state.retry_delay => {
+        Some(then) if now.duration_since(then) < state.retry_delay => {
             return false;
         }
         _ => {}
     }
 
     match state.previous {
-        Some(last) if now.duration_since(last) < state.repeat_interval => {
+        Some(then) if now.duration_since(then) < state.repeat_interval => {
             return false;
         }
         _ => {}

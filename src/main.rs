@@ -48,6 +48,7 @@ fn main() -> process::ExitCode {
     }
 
     print_banner();
+    println!();
 
     if settings.debug {
         println!("{:#?}", &settings);
@@ -118,7 +119,7 @@ fn main() -> process::ExitCode {
 
                 if slack::should_send_slack_notification(now, &settings, &slack_low_state) {
                     let message = &notifications::format_notification_message(
-                        settings.slack.restored_template_body.as_str(),
+                        settings.slack.restored_message_template_body.as_str(),
                         &settings,
                         &low_since,
                     );
@@ -143,7 +144,7 @@ fn main() -> process::ExitCode {
 
                 if batsign::should_send_batsign_notification(now, &settings, &batsign_low_state) {
                     let message = &notifications::format_notification_message(
-                        settings.batsign.restored_template_body.as_str(),
+                        settings.batsign.restored_message_template_body.as_str(),
                         &settings,
                         &low_since,
                     );
@@ -185,7 +186,7 @@ fn main() -> process::ExitCode {
 
                 if slack::should_send_slack_notification(now, &settings, &slack_high_state) {
                     let message = &notifications::format_notification_message(
-                        settings.slack.alarm_template_body.as_str(),
+                        settings.slack.alarm_message_template_body.as_str(),
                         &settings,
                         &high_since,
                     );
@@ -210,7 +211,7 @@ fn main() -> process::ExitCode {
 
                 if batsign::should_send_batsign_notification(now, &settings, &batsign_high_state) {
                     let message = &notifications::format_notification_message(
-                        settings.batsign.alarm_template_body.as_str(),
+                        settings.batsign.alarm_message_template_body.as_str(),
                         &settings,
                         &high_since,
                     );
@@ -289,67 +290,60 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
 
     if cli.save {
         let config = config::FileConfig::from(&settings);
-        match confy::store_path(&settings.paths.config_file, config) {
-            Ok(()) => {}
-            Err(_) => {
-                eprintln!("[!] Failed to write configuration file.");
-                return Err(process::ExitCode::FAILURE);
-            }
+
+        if confy::store_path(&settings.paths.config_file, config).is_err() {
+            eprintln!("[!] Failed to write configuration file.");
+            return Err(process::ExitCode::FAILURE);
         };
 
-        match fs::write(
+        if fs::write(
             settings.paths.slack_alarm_template,
-            &settings.slack.alarm_template_body,
-        ) {
-            Ok(()) => {}
-            Err(_) => {
-                eprintln!("[!] Failed to write Slack alarm template file.");
-                return Err(process::ExitCode::FAILURE);
-            }
+            &settings.slack.alarm_message_template_body,
+        )
+        .is_err()
+        {
+            eprintln!("[!] Failed to write Slack alarm template file.");
+            return Err(process::ExitCode::FAILURE);
         }
 
-        match fs::write(
+        if fs::write(
             settings.paths.slack_restored_template,
-            &settings.slack.restored_template_body,
-        ) {
-            Ok(()) => {}
-            Err(_) => {
-                eprintln!("[!] Failed to write Slack restored template file.");
-                return Err(process::ExitCode::FAILURE);
-            }
+            &settings.slack.restored_message_template_body,
+        )
+        .is_err()
+        {
+            eprintln!("[!] Failed to write Slack restored template file.");
+            return Err(process::ExitCode::FAILURE);
         }
 
-        match fs::write(
+        if fs::write(
             settings.paths.batsign_urls,
             settings.batsign.urls.join("\n"),
-        ) {
-            Ok(()) => {}
-            Err(_) => {
-                eprintln!("[!] Failed to write Batsigns URL file.");
-                return Err(process::ExitCode::FAILURE);
-            }
+        )
+        .is_err()
+        {
+            eprintln!("[!] Failed to write Batsigns URL file.");
+            return Err(process::ExitCode::FAILURE);
         }
 
-        match fs::write(
+        if fs::write(
             settings.paths.batsign_alarm_template,
-            &settings.batsign.alarm_template_body,
-        ) {
-            Ok(()) => {}
-            Err(_) => {
-                eprintln!("[!] Failed to write Batsign alarm template file.");
-                return Err(process::ExitCode::FAILURE);
-            }
+            &settings.batsign.alarm_message_template_body,
+        )
+        .is_err()
+        {
+            eprintln!("[!] Failed to write Batsign alarm template file.");
+            return Err(process::ExitCode::FAILURE);
         }
 
-        match fs::write(
+        if fs::write(
             settings.paths.batsign_restored_template,
-            &settings.batsign.restored_template_body,
-        ) {
-            Ok(()) => {}
-            Err(_) => {
-                eprintln!("[!] Failed to write Batsign restored template file.");
-                return Err(process::ExitCode::FAILURE);
-            }
+            &settings.batsign.restored_message_template_body,
+        )
+        .is_err()
+        {
+            eprintln!("[!] Failed to write Batsign restored template file.");
+            return Err(process::ExitCode::FAILURE);
         }
 
         println!(
