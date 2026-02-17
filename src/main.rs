@@ -118,10 +118,10 @@ fn main() -> process::ExitCode {
 
                 let should_send_slack_notification = !settings.slack.webhook_url.is_empty()
                     && settings.slack.webhook_url != defaults::slack::DUMMY_WEBHOOK_URL
-                    && notifications::should_send_notification(now, &settings, &slack_low_state);
+                    && notifications::should_send_notification(now, &slack_low_state);
 
                 let should_send_batsign_notification = !settings.batsign.urls.is_empty()
-                    && notifications::should_send_notification(now, &settings, &batsign_low_state);
+                    && notifications::should_send_notification(now, &batsign_low_state);
 
                 if should_send_slack_notification {
                     let message = &notifications::format_notification_message(
@@ -193,10 +193,10 @@ fn main() -> process::ExitCode {
 
                 let should_send_slack_notification = !settings.slack.webhook_url.is_empty()
                     && settings.slack.webhook_url != defaults::slack::DUMMY_WEBHOOK_URL
-                    && notifications::should_send_notification(now, &settings, &slack_high_state);
+                    && notifications::should_send_notification(now, &slack_high_state);
 
                 let should_send_batsign_notification = !settings.batsign.urls.is_empty()
-                    && notifications::should_send_notification(now, &settings, &batsign_high_state);
+                    && notifications::should_send_notification(now, &batsign_high_state);
 
                 if should_send_slack_notification {
                     let message = &notifications::format_notification_message(
