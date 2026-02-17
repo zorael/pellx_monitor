@@ -361,5 +361,5 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
 /// Prints the program banner with version information.
 fn print_banner() {
     let banner = format!("{} {}", defaults::PROGRAM_NAME, defaults::VERSION);
-    println!("{}\n{}\n", banner, "=".repeat(banner.len()));
+    println!("{}\n{}", banner, "=".repeat(banner.len()));
 }
