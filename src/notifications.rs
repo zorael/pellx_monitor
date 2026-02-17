@@ -1,5 +1,7 @@
 use std::time::{Duration, Instant};
 
+use crate::settings::Settings;
+
 #[derive(Clone)]
 pub struct NotificationState {
     pub previous: Option<Instant>,
@@ -24,7 +26,6 @@ impl NotificationState {
     }
 }
 
-/*
 /// Constructs a notification message body.
 pub fn format_notification_message(template: &str, settings: &Settings, since: &Instant) -> String {
     template
@@ -42,4 +43,3 @@ pub fn format_notification_message(template: &str, settings: &Settings, since: &
             &humantime::format_duration(settings.hold).to_string(),
         )
 }
-*/

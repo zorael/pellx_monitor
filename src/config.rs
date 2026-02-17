@@ -34,7 +34,6 @@ pub struct FileConfig {
     /// Time to wait before retrying to send a notification after a failure.
     #[serde(with = "humantime_serde")]
     pub time_between_batsign_retries: Option<time::Duration>,
-
 }
 
 impl Default for FileConfig {
@@ -62,7 +61,9 @@ impl From<&Settings> for FileConfig {
             hold: Some(s.hold),
             slack_webhook_url: Some(s.slack_webhook_url.clone()),
             time_between_slack_notifications: Some(s.time_between_slack_notifications),
-            time_between_slack_notification_retries: Some(s.time_between_slack_notification_retries),
+            time_between_slack_notification_retries: Some(
+                s.time_between_slack_notification_retries,
+            ),
             time_between_batsigns: Some(s.time_between_batsigns),
             time_between_batsign_retries: Some(s.time_between_batsign_retries),
         }

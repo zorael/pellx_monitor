@@ -127,8 +127,7 @@ impl Settings {
         if self.pin_number > MAX_GPIO_PIN {
             vec.push(format!(
                 "Invalid GPIO pin number: {}. Must be between 0 and {}.",
-                self.pin_number,
-                MAX_GPIO_PIN
+                self.pin_number, MAX_GPIO_PIN
             ));
         }
 
@@ -149,22 +148,27 @@ impl Settings {
         }
 
         if self.time_between_slack_notification_retries == Duration::ZERO {
-            vec.push("Time between Slack notification retries must be greater than zero.".to_string());
+            vec.push(
+                "Time between Slack notification retries must be greater than zero.".to_string(),
+            );
         }
 
-        if !self.dry_run {
-            if self.batsign_urls.is_empty() {
-                vec.push("At least one Batsign URL is required.".to_string());
-            } else {
-                for url in self.batsign_urls.iter() {
-                    match url.trim() {
-                        url if !url.starts_with("https://") => vec.push(format!(
-                            "Batsign URL \"{url}\" does not seem to be a valid URL."
-                        )),
-                        _ => {}
-                    }
+        if !self.batsign_urls.is_empty() {
+            for url in self.batsign_urls.iter() {
+                match url.trim() {
+                    url if !url.starts_with("https://") => vec.push(format!(
+                        "Batsign URL \"{url}\" does not seem to be a valid URL."
+                    )),
+                    _ => {}
                 }
             }
+        }
+
+        if !self.slack_webhook_url.is_empty()
+            && self.slack_webhook_url != defaults::SLACK_WEBHOOK_URL_PLACEHOLDER
+            && !self.slack_webhook_url.starts_with("https://")
+        {
+            vec.push("Slack webhook URL does not seem to be a valid URL.".to_string());
         }
 
         if vec.is_empty() { Ok(()) } else { Err(vec) }
@@ -226,11 +230,15 @@ impl Settings {
 
     /// Loads the Batsign URLs and message templates from disk, returning an error if any of the files cannot be read. This is used to load the resources after resolving the resource paths.
     pub fn load_resources_from_disk(&mut self) -> io::Result<()> {
-        self.slack_alarm_template_body = read_to_trimmed_string(&self.slack_alarm_template_pathbuf)?;
-        self.slack_restored_template_body = read_to_trimmed_string(&self.slack_restored_template_pathbuf)?;
+        self.slack_alarm_template_body =
+            read_to_trimmed_string(&self.slack_alarm_template_pathbuf)?;
+        self.slack_restored_template_body =
+            read_to_trimmed_string(&self.slack_restored_template_pathbuf)?;
         self.batsign_urls = config::read_file_lines_into_vec(&self.batsign_urls_pathbuf)?;
-        self.batsign_alarm_template_body = read_to_trimmed_string(&self.batsign_alarm_template_pathbuf)?;
-        self.batsign_restored_template_body = read_to_trimmed_string(&self.batsign_restored_template_pathbuf)?;
+        self.batsign_alarm_template_body =
+            read_to_trimmed_string(&self.batsign_alarm_template_pathbuf)?;
+        self.batsign_restored_template_body =
+            read_to_trimmed_string(&self.batsign_restored_template_pathbuf)?;
         Ok(())
     }
 }
@@ -265,7 +273,9 @@ pub fn apply_file(mut s: Settings, file: &Option<config::FileConfig>) -> Setting
         s.time_between_slack_notifications = time_between_slack_notifications;
     }
 
-    if let Some(time_between_slack_notification_retries) = file.time_between_slack_notification_retries {
+    if let Some(time_between_slack_notification_retries) =
+        file.time_between_slack_notification_retries
+    {
         s.time_between_slack_notification_retries = time_between_slack_notification_retries;
     }
 
@@ -290,13 +300,13 @@ pub fn apply_cli(mut s: Settings, cli: &Cli) -> Settings {
         s.hold = hold;
     }
 
-    if let Some(time_between_batsigns) = cli.time_between_batsigns {
+    /*if let Some(time_between_batsigns) = cli.time_between_batsigns {
         s.time_between_batsigns = time_between_batsigns;
     }
 
     if let Some(time_between_batsigns_retries) = cli.time_between_batsign_retries {
         s.time_between_batsign_retries = time_between_batsigns_retries;
-    }
+    }*/
 
     /*if let Some(time_between_slack_notifications) = cli.time_between_slack_notifications {
         s.time_between_slack_notifications = time_between_slack_notifications;

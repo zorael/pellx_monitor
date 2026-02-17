@@ -22,6 +22,7 @@ pub struct Cli {
     #[arg(short = 'H', long, value_name = "duration", value_parser = humantime::parse_duration)]
     pub hold: Option<Duration>,
 
+    /*
     /// Minimum time between sending notifications
     #[arg(short = 't', long, value_name = "duration", value_parser = humantime::parse_duration)]
     pub time_between_batsigns: Option<Duration>,
@@ -29,7 +30,7 @@ pub struct Cli {
     /// Time to wait before retrying to send a notification after a failure
     #[arg(short = 'r', long, value_name = "duration", value_parser = humantime::parse_duration)]
     pub time_between_batsign_retries: Option<Duration>,
-
+    */
     /// Perform a dry run without sending any notifications
     #[arg(long)]
     pub dry_run: bool,

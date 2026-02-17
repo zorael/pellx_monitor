@@ -5,7 +5,7 @@ use crate::notifications::NotificationState;
 use crate::settings::Settings;
 
 /// Sends a batsign message to the specified URL, returning the HTTP status code or an error.
-pub fn send_batsign_notification(
+pub fn send_batsign_notification_impl(
     client: &Client,
     urls: &Vec<String>,
     message: &str,
@@ -20,49 +20,54 @@ pub fn send_batsign_notification(
     Ok(statuses)
 }
 
-pub fn maybe_send_batsign_notification(
-    client: &Client,
+pub fn should_send_batsign_notification(
     now: Instant,
     settings: &Settings,
-    body: &str,
     state: &NotificationState,
-) -> Result<NotificationState, reqwest::Error> {
+) -> bool {
     if settings.batsign_urls.is_empty() {
-        return Ok(state.clone());
+        return false;
     }
 
     match state.previous_failure {
         Some(failure_time) if now.duration_since(failure_time) < state.retry_delay => {
-            return Ok(state.clone());
+            return false;
         }
-        _ => {},
+        _ => {}
     }
 
     match state.previous {
         Some(last) if now.duration_since(last) < state.repeat_interval => {
-            return Ok(state.clone());
-        },
-        _ => {},
+            return false;
+        }
+        _ => {}
     }
 
     if settings.debug {
         println!("...should send Batsign notification!");
     }
 
+    true
+}
+
+/// Sends a Batsign notification if it should. Returns the updated notification state.
+pub fn send_batsign_notification(
+    client: &Client,
+    now: Instant,
+    settings: &Settings,
+    message: &str,
+    state: &NotificationState,
+) -> Result<NotificationState, reqwest::Error> {
     let mut state = state.clone();
     state.reset();
 
     if settings.dry_run {
         println!("Dry run: would otherwise have sent Batsign notification");
         state.previous = Some(now);
-        return Ok(state.clone());
+        return Ok(state);
     }
 
-    let statuses = match send_batsign_notification(
-        client,
-        &settings.batsign_urls,
-        body,
-    ) {
+    let statuses = match send_batsign_notification_impl(client, &settings.batsign_urls, message) {
         Ok(statuses) => statuses,
         Err(e) => {
             eprintln!("[!] Could not reach Batsign: {e}");
@@ -71,16 +76,21 @@ pub fn maybe_send_batsign_notification(
         }
     };
 
+    println!("Batsigns sent; HTTP statuses: {:?}", statuses);
+
+    let mut num_errors: u8 = 0;
+
     for status in statuses {
-        if status.is_success() {
-            println!("Batsign sent; HTTP {status}");
-            state.previous = Some(now);
-            state.previous_failure = None;
-        } else {
-            eprintln!("[!] Batsign returned error; HTTP {status}");
-            state.previous_failure = Some(now);
+        if !status.is_success() {
+            num_errors += 1;
         }
     }
 
-    Ok(state.clone())
+    if num_errors == 0 {
+        state.previous = Some(now);
+    } else {
+        state.previous_failure = Some(now);
+    }
+
+    Ok(state)
 }

@@ -1,14 +1,15 @@
 use reqwest::blocking::Client;
 use std::time::Instant;
 
+use crate::defaults;
 use crate::notifications::NotificationState;
 use crate::settings::Settings;
-use crate::defaults;
 
 pub const SLACK_ERROR_EMOJI: &str = ":x:";
 pub const SLACK_SUCCESS_EMOJI: &str = ":white_tick:";
 
-fn send_slack_notification(
+/// Sends a Slack notification.
+fn send_slack_notification_impl(
     client: &Client,
     slack_webhook_url: &str,
     message: &str,
@@ -25,41 +26,52 @@ fn send_slack_notification(
     Ok(())
 }
 
-pub fn maybe_send_slack_notification(
-    client: &Client,
+pub fn should_send_slack_notification(
     now: Instant,
     settings: &Settings,
-    emoji: &str,
-    body: &str,
     state: &NotificationState,
-) -> Result<NotificationState, reqwest::Error> {
-    if settings.slack_webhook_url.is_empty() || settings.slack_webhook_url == defaults::SLACK_WEBHOOK_URL_PLACEHOLDER {
-        return Ok(state.clone());
+) -> bool {
+    if settings.slack_webhook_url.is_empty()
+        || settings.slack_webhook_url == defaults::SLACK_WEBHOOK_URL_PLACEHOLDER
+    {
+        return false;
     }
 
     match state.previous_failure {
         Some(failure_time) if now.duration_since(failure_time) < state.retry_delay => {
-            return Ok(state.clone());
+            return false;
         }
-        _ => {},
+        _ => {}
     }
 
     match state.previous {
         Some(last) if now.duration_since(last) < state.repeat_interval => {
-            return Ok(state.clone());
-        },
-        _ => {},
+            return false;
+        }
+        _ => {}
     }
 
     if settings.debug {
         println!("...should send restored notification!");
     }
 
+    true
+}
+
+/// Sends a Slack notification if it should. Returns the updated notification state.
+pub fn send_slack_notification(
+    client: &Client,
+    now: Instant,
+    settings: &Settings,
+    emoji: &str,
+    message: &str,
+    state: &NotificationState,
+) -> Result<NotificationState, reqwest::Error> {
     let mut state = state.clone();
     state.reset();
 
     if settings.dry_run {
-        println!("Dry run: would otherwise have sent alarm Slack notification");
+        println!("Dry run: would otherwise have sent Slack notification");
         state.previous = Some(now);
         return Ok(state.clone());
     }
@@ -67,23 +79,16 @@ pub fn maybe_send_slack_notification(
     match &settings.slack_webhook_url {
         url if url.is_empty() => {}
         url if url == defaults::SLACK_WEBHOOK_URL_PLACEHOLDER => {}
-        url => {
-            match send_slack_notification(
-                client,
-                url,
-                body,
-                emoji,
-            ) {
-                Ok(()) => {
-                    println!("Sent Slack notification");
-                    state.previous = Some(now);
-                },
-                Err(e) => {
-                    state.previous_failure = Some(now);
-                    return Err(e);
-                }
+        url => match send_slack_notification_impl(client, url, message, emoji) {
+            Ok(()) => {
+                println!("Sent Slack notification");
+                state.previous = Some(now);
             }
-        }
+            Err(e) => {
+                state.previous_failure = Some(now);
+                return Err(e);
+            }
+        },
     }
 
     Ok(state.clone())

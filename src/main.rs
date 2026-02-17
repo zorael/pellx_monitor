@@ -2,16 +2,15 @@ mod batsign;
 mod cli;
 mod config;
 mod defaults;
+mod notifications;
 mod settings;
 mod slack;
-mod notifications;
 
 use clap::Parser;
 use reqwest::blocking::Client;
 use rppal::gpio::{Gpio, Level};
-use std::fs;
 use std::time::{Duration, Instant};
-use std::{process, thread};
+use std::{fs, process, thread};
 
 use crate::notifications::NotificationState;
 
@@ -76,10 +75,23 @@ fn main() -> process::ExitCode {
 
     let client = Client::new();
 
-    let mut slack_low_state = NotificationState::new(settings.time_between_slack_notifications, settings.time_between_slack_notification_retries);
-    let mut slack_high_state = NotificationState::new(settings.time_between_slack_notifications, settings.time_between_slack_notification_retries);
-    let mut batsign_low_state = NotificationState::new(settings.time_between_batsigns, settings.time_between_batsign_retries);
-    let mut batsign_high_state = NotificationState::new(settings.time_between_batsigns, settings.time_between_batsign_retries);
+    let mut slack_low_state = NotificationState::new(
+        settings.time_between_slack_notifications,
+        Duration::from_secs(3600 * 24 * 365 * 999), // effectively disable retries for restored notifications
+    );
+    let mut slack_high_state = NotificationState::new(
+        settings.time_between_slack_notifications,
+        settings.time_between_slack_notification_retries,
+    );
+    let mut batsign_low_state = NotificationState::new(
+        settings.time_between_batsigns,
+        Duration::from_secs(3600 * 24 * 365 * 999), // as above
+    );
+    let mut batsign_high_state = NotificationState::new(
+        settings.time_between_batsigns,
+        settings.time_between_batsign_retries,
+    );
+
     let mut low_since: Option<Instant> = None;
     let mut high_since: Option<Instant> = None;
     let mut still_in_initial_state = true;
@@ -101,40 +113,57 @@ fn main() -> process::ExitCode {
                 }
 
                 let now = Instant::now();
+                let low_since = low_since.expect("low_since should be set with .get_or_insert");
                 high_since = None;
 
-                match slack::maybe_send_slack_notification(
-                    &client,
-                    now,
-                    &settings,
-                    slack::SLACK_SUCCESS_EMOJI,
-                    settings.slack_restored_template_body.as_str(),
-                    &slack_low_state,
-                ) {
-                    Ok(state) => {
-                        slack_low_state = state;
-                        slack_high_state.reset();
-                    }
-                    Err(e) => {
-                        eprintln!("[!] Failed to send Slack notification: {e}");
-                    },
-                };
+                if slack::should_send_slack_notification(now, &settings, &slack_low_state) {
+                    let message = &notifications::format_notification_message(
+                        settings.slack_restored_template_body.as_str(),
+                        &settings,
+                        &low_since,
+                    );
 
-                match batsign::maybe_send_batsign_notification(
-                    &client,
-                    now,
-                    &settings,
-                    &settings.batsign_restored_template_body,
-                    &batsign_low_state,
-                ) {
-                    Ok(state) => {
-                        batsign_low_state = state;
-                        batsign_high_state.reset();
-                    }
-                    Err(e) => {
-                        eprintln!("[!] Failed to send Batsign notification: {e}");
-                    },
-                };
+                    match slack::send_slack_notification(
+                        &client,
+                        now,
+                        &settings,
+                        slack::SLACK_SUCCESS_EMOJI,
+                        message,
+                        &slack_low_state,
+                    ) {
+                        Ok(state) => {
+                            slack_low_state = state;
+                            slack_high_state.reset();
+                        }
+                        Err(e) => {
+                            eprintln!("[!] Failed to send Slack notification: {e}");
+                        }
+                    };
+                }
+
+                if batsign::should_send_batsign_notification(now, &settings, &batsign_low_state) {
+                    let message = &notifications::format_notification_message(
+                        settings.batsign_restored_template_body.as_str(),
+                        &settings,
+                        &low_since,
+                    );
+
+                    match batsign::send_batsign_notification(
+                        &client,
+                        now,
+                        &settings,
+                        message,
+                        &batsign_low_state,
+                    ) {
+                        Ok(state) => {
+                            batsign_low_state = state;
+                            batsign_high_state.reset();
+                        }
+                        Err(e) => {
+                            eprintln!("[!] Failed to send Batsign notification: {e}");
+                        }
+                    };
+                }
             }
             Level::High => {
                 // ALARM (open): internal pull-up pulls to HIGH
@@ -151,40 +180,57 @@ fn main() -> process::ExitCode {
                 }
 
                 let now = Instant::now();
+                let high_since = high_since.expect("high_since should be set with .get_or_insert");
                 low_since = None;
 
-                match slack::maybe_send_slack_notification(
-                    &client,
-                    now,
-                    &settings,
-                    slack::SLACK_ERROR_EMOJI,
-                    settings.slack_alarm_template_body.as_str(),
-                    &slack_high_state,
-                ) {
-                    Ok(state) => {
-                        slack_high_state = state;
-                        slack_low_state.reset();
-                    },
-                    Err(e) => {
-                        eprintln!("[!] Failed to send Slack notification: {e}");
-                    },
-                };
+                if slack::should_send_slack_notification(now, &settings, &slack_high_state) {
+                    let message = &notifications::format_notification_message(
+                        settings.slack_alarm_template_body.as_str(),
+                        &settings,
+                        &high_since,
+                    );
 
-                match batsign::maybe_send_batsign_notification(
-                    &client,
-                    now,
-                    &settings,
-                    &settings.batsign_alarm_template_body,
-                    &batsign_high_state,
-                ) {
-                    Ok(state) => {
-                        batsign_high_state = state;
-                        batsign_low_state.reset();
-                    }
-                    Err(e) => {
-                        eprintln!("[!] Failed to send Batsign notification: {e}");
-                    },
-                };
+                    match slack::send_slack_notification(
+                        &client,
+                        now,
+                        &settings,
+                        slack::SLACK_ERROR_EMOJI,
+                        message,
+                        &slack_high_state,
+                    ) {
+                        Ok(state) => {
+                            slack_high_state = state;
+                            slack_low_state.reset();
+                        }
+                        Err(e) => {
+                            eprintln!("[!] Failed to send Slack notification: {e}");
+                        }
+                    };
+                }
+
+                if batsign::should_send_batsign_notification(now, &settings, &batsign_high_state) {
+                    let message = &notifications::format_notification_message(
+                        settings.batsign_alarm_template_body.as_str(),
+                        &settings,
+                        &high_since,
+                    );
+
+                    match batsign::send_batsign_notification(
+                        &client,
+                        now,
+                        &settings,
+                        message,
+                        &batsign_high_state,
+                    ) {
+                        Ok(state) => {
+                            batsign_high_state = state;
+                            batsign_low_state.reset();
+                        }
+                        Err(e) => {
+                            eprintln!("[!] Failed to send Batsign notification: {e}");
+                        }
+                    };
+                }
 
                 still_in_initial_state = false;
             }
@@ -323,37 +369,3 @@ fn print_banner() {
     let banner = format!("{} {}", defaults::PROGRAM_NAME, defaults::VERSION);
     println!("{}\n{}\n", banner, "=".repeat(banner.len()));
 }
-
-/// Determines if an alarm Batsign should be sent, based on the last successful and failed timestamps.
-pub fn should_send_alarm_notification(
-    now: Instant,
-    last: Option<Instant>,
-    last_failed: Option<Instant>,
-    time_between_batsigns: Duration,
-    time_between_batsigns_retry: Duration,
-) -> bool {
-    if let Some(last_failed) = last_failed {
-        return now.duration_since(last_failed) >= time_between_batsigns_retry;
-    }
-
-    if let Some(last) = last {
-        now.duration_since(last) >= time_between_batsigns
-    } else {
-        true
-    }
-}
-
-/// Determines if a restored Batsign should be sent, based on the last successful and failed timestamps.
-pub fn should_send_restored_notification(
-    now: Instant,
-    last: Option<Instant>,
-    last_failed: Option<Instant>,
-    time_between_batsigns_retry: Duration,
-) -> bool {
-    if let Some(last_failed) = last_failed {
-        return now.duration_since(last_failed) >= time_between_batsigns_retry;
-    }
-
-    last.is_none()
-}
-
