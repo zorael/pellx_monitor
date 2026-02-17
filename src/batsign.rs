@@ -30,36 +30,6 @@ pub fn send_batsign_notification_impl(
     Ok(statuses)
 }
 
-pub fn should_send_batsign_notification(
-    now: Instant,
-    settings: &Settings,
-    state: &NotificationState,
-) -> bool {
-    if settings.batsign.urls.is_empty() {
-        return false;
-    }
-
-    match state.previous_failure {
-        Some(then) if now.duration_since(then) < state.retry_delay => {
-            return false;
-        }
-        _ => {}
-    }
-
-    match state.previous {
-        Some(then) if now.duration_since(then) < state.repeat_interval => {
-            return false;
-        }
-        _ => {}
-    }
-
-    if settings.debug {
-        println!("...should send Batsign notification!");
-    }
-
-    true
-}
-
 /// Sends a Batsign notification if it should. Returns the updated notification state.
 pub fn send_batsign_notification(
     client: &Client,

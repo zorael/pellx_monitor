@@ -33,38 +33,6 @@ fn send_slack_notification_impl(
     Ok(())
 }
 
-pub fn should_send_slack_notification(
-    now: Instant,
-    settings: &Settings,
-    state: &NotificationState,
-) -> bool {
-    if settings.slack.webhook_url.is_empty()
-        || settings.slack.webhook_url == defaults::slack::DUMMY_WEBHOOK_URL
-    {
-        return false;
-    }
-
-    match state.previous_failure {
-        Some(failure_time) if now.duration_since(failure_time) < state.retry_delay => {
-            return false;
-        }
-        _ => {}
-    }
-
-    match state.previous {
-        Some(last) if now.duration_since(last) < state.repeat_interval => {
-            return false;
-        }
-        _ => {}
-    }
-
-    if settings.debug {
-        println!("...should send restored notification!");
-    }
-
-    true
-}
-
 /// Sends a Slack notification if it should. Returns the updated notification state.
 pub fn send_slack_notification(
     client: &Client,

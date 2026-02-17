@@ -55,7 +55,7 @@ pub mod batsign {
     pub const ALARM_MESSAGE_TEMPLATE_BODY: &str =
         "Subject: PellX Alarm\nPellets burner has been in an error state for {since}.\n";
 
-    /// Default restored message template.L_PLACEHOLDER
+    /// Default restored message template.
     pub const RESTORED_MESSAGE_TEMPLATE_BODY: &str =
         "Subject: PellX Restored\nPellets burner has been restored.\n";
 

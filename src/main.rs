@@ -9,7 +9,7 @@ mod slack;
 use clap::Parser;
 use reqwest::blocking::Client;
 use rppal::gpio::{Gpio, Level};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use std::{fs, process, thread};
 
 use crate::notifications::NotificationState;
@@ -76,20 +76,14 @@ fn main() -> process::ExitCode {
 
     let client = Client::new();
 
-    let mut slack_low_state = NotificationState::new(
-        settings.slack.notification_interval,
-        Duration::from_secs(3600 * 24 * 365 * 999), // effectively disable retries for restored notifications
-    );
+    let mut slack_low_state = NotificationState::new(None, settings.slack.retry_interval);
     let mut slack_high_state = NotificationState::new(
-        settings.slack.notification_interval,
+        Some(settings.slack.notification_interval),
         settings.slack.retry_interval,
     );
-    let mut batsign_low_state = NotificationState::new(
-        settings.batsign.notification_interval,
-        Duration::from_secs(3600 * 24 * 365 * 999), // as above
-    );
+    let mut batsign_low_state = NotificationState::new(None, settings.batsign.retry_interval);
     let mut batsign_high_state = NotificationState::new(
-        settings.batsign.notification_interval,
+        Some(settings.batsign.notification_interval),
         settings.batsign.retry_interval,
     );
 
@@ -117,7 +111,14 @@ fn main() -> process::ExitCode {
                 let low_since = low_since.expect("low_since should be set with .get_or_insert");
                 high_since = None;
 
-                if slack::should_send_slack_notification(now, &settings, &slack_low_state) {
+                let should_send_slack_notification = !settings.slack.webhook_url.is_empty()
+                    && settings.slack.webhook_url != defaults::slack::DUMMY_WEBHOOK_URL
+                    && notifications::should_send(now, &settings, &slack_low_state);
+
+                let should_send_batsign_notification = !settings.batsign.urls.is_empty()
+                    && notifications::should_send(now, &settings, &batsign_low_state);
+
+                if should_send_slack_notification {
                     let message = &notifications::format_notification_message(
                         settings.slack.restored_message_template_body.as_str(),
                         &settings,
@@ -142,7 +143,7 @@ fn main() -> process::ExitCode {
                     };
                 }
 
-                if batsign::should_send_batsign_notification(now, &settings, &batsign_low_state) {
+                if should_send_batsign_notification {
                     let message = &notifications::format_notification_message(
                         settings.batsign.restored_message_template_body.as_str(),
                         &settings,
@@ -184,7 +185,14 @@ fn main() -> process::ExitCode {
                 let high_since = high_since.expect("high_since should be set with .get_or_insert");
                 low_since = None;
 
-                if slack::should_send_slack_notification(now, &settings, &slack_high_state) {
+                let should_send_slack_notification = !settings.slack.webhook_url.is_empty()
+                    && settings.slack.webhook_url != defaults::slack::DUMMY_WEBHOOK_URL
+                    && notifications::should_send(now, &settings, &slack_high_state);
+
+                let should_send_batsign_notification = !settings.batsign.urls.is_empty()
+                    && notifications::should_send(now, &settings, &batsign_high_state);
+
+                if should_send_slack_notification {
                     let message = &notifications::format_notification_message(
                         settings.slack.alarm_message_template_body.as_str(),
                         &settings,
@@ -209,7 +217,7 @@ fn main() -> process::ExitCode {
                     };
                 }
 
-                if batsign::should_send_batsign_notification(now, &settings, &batsign_high_state) {
+                if should_send_batsign_notification {
                     let message = &notifications::format_notification_message(
                         settings.batsign.alarm_message_template_body.as_str(),
                         &settings,
