@@ -65,10 +65,10 @@ fn main() -> process::ExitCode {
         }
     };
 
-    let pin = match gpio.get(settings.pin_number) {
+    let pin = match gpio.get(settings.gpio.pin_number) {
         Ok(p) => p.into_input_pullup(),
         Err(e) => {
-            eprintln!("[!] Failed to setup GPIO{}: {e}", settings.pin_number);
+            eprintln!("[!] Failed to setup GPIO{}: {e}", settings.gpio.pin_number);
             return process::ExitCode::FAILURE;
         }
     };
@@ -76,20 +76,20 @@ fn main() -> process::ExitCode {
     let client = Client::new();
 
     let mut slack_low_state = NotificationState::new(
-        settings.time_between_slack_notifications,
+        settings.slack.notification_interval,
         Duration::from_secs(3600 * 24 * 365 * 999), // effectively disable retries for restored notifications
     );
     let mut slack_high_state = NotificationState::new(
-        settings.time_between_slack_notifications,
-        settings.time_between_slack_notification_retries,
+        settings.slack.notification_interval,
+        settings.slack.retry_interval,
     );
     let mut batsign_low_state = NotificationState::new(
-        settings.time_between_batsigns,
+        settings.batsign.notification_interval,
         Duration::from_secs(3600 * 24 * 365 * 999), // as above
     );
     let mut batsign_high_state = NotificationState::new(
-        settings.time_between_batsigns,
-        settings.time_between_batsign_retries,
+        settings.batsign.notification_interval,
+        settings.batsign.retry_interval,
     );
 
     let mut low_since: Option<Instant> = None;
@@ -101,14 +101,14 @@ fn main() -> process::ExitCode {
             Level::Low => {
                 // OK (closed): pull-up is overridden, LOW
                 let start = low_since.get_or_insert_with(Instant::now);
-                let qualified = start.elapsed() >= settings.hold;
+                let qualified = start.elapsed() >= settings.gpio.hold;
 
                 if settings.debug {
                     println!("LOW");
                 }
 
                 if !qualified || still_in_initial_state {
-                    thread::sleep(settings.poll_interval);
+                    thread::sleep(settings.gpio.poll_interval);
                     continue;
                 }
 
@@ -118,7 +118,7 @@ fn main() -> process::ExitCode {
 
                 if slack::should_send_slack_notification(now, &settings, &slack_low_state) {
                     let message = &notifications::format_notification_message(
-                        settings.slack_restored_template_body.as_str(),
+                        settings.slack.restored_template_body.as_str(),
                         &settings,
                         &low_since,
                     );
@@ -143,7 +143,7 @@ fn main() -> process::ExitCode {
 
                 if batsign::should_send_batsign_notification(now, &settings, &batsign_low_state) {
                     let message = &notifications::format_notification_message(
-                        settings.batsign_restored_template_body.as_str(),
+                        settings.batsign.restored_template_body.as_str(),
                         &settings,
                         &low_since,
                     );
@@ -168,14 +168,14 @@ fn main() -> process::ExitCode {
             Level::High => {
                 // ALARM (open): internal pull-up pulls to HIGH
                 let start = high_since.get_or_insert_with(Instant::now);
-                let qualified = start.elapsed() >= settings.hold;
+                let qualified = start.elapsed() >= settings.gpio.hold;
 
                 if settings.debug {
                     println!("HIGH");
                 }
 
                 if !qualified {
-                    thread::sleep(settings.poll_interval);
+                    thread::sleep(settings.gpio.poll_interval);
                     continue;
                 }
 
@@ -185,7 +185,7 @@ fn main() -> process::ExitCode {
 
                 if slack::should_send_slack_notification(now, &settings, &slack_high_state) {
                     let message = &notifications::format_notification_message(
-                        settings.slack_alarm_template_body.as_str(),
+                        settings.slack.alarm_template_body.as_str(),
                         &settings,
                         &high_since,
                     );
@@ -210,7 +210,7 @@ fn main() -> process::ExitCode {
 
                 if batsign::should_send_batsign_notification(now, &settings, &batsign_high_state) {
                     let message = &notifications::format_notification_message(
-                        settings.batsign_alarm_template_body.as_str(),
+                        settings.batsign.alarm_template_body.as_str(),
                         &settings,
                         &high_since,
                     );
@@ -236,7 +236,7 @@ fn main() -> process::ExitCode {
             }
         }
 
-        thread::sleep(settings.poll_interval);
+        thread::sleep(settings.gpio.poll_interval);
     }
 }
 
@@ -244,18 +244,18 @@ fn main() -> process::ExitCode {
 fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode> {
     let mut settings = settings::Settings::default().with_resource_dir(&cli.resource_dir);
 
-    if !settings.resource_dir_pathbuf.exists() {
-        match fs::create_dir(&settings.resource_dir_pathbuf) {
+    if !settings.paths.resource_dir.exists() {
+        match fs::create_dir(&settings.paths.resource_dir) {
             Ok(()) => {
                 println!(
                     "Resource directory `{}` created.",
-                    settings.resource_dir_pathbuf.to_str().unwrap()
+                    settings.paths.resource_dir.to_str().unwrap()
                 );
             }
             Err(e) => {
                 eprintln!(
                     "[!] Failed to create resource directory `{}`: {e}",
-                    settings.resource_dir_pathbuf.to_str().unwrap()
+                    settings.paths.resource_dir.to_str().unwrap()
                 );
                 return Err(process::ExitCode::FAILURE);
             }
@@ -278,7 +278,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         Err(e) => {
             eprintln!(
                 "[!] Failed to read configuration file `{}`: {e}",
-                settings.config_file_pathbuf.to_str().unwrap()
+                settings.paths.config_file.to_str().unwrap()
             );
             return Err(process::ExitCode::FAILURE);
         }
@@ -289,7 +289,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
 
     if cli.save {
         let config = config::FileConfig::from(&settings);
-        match confy::store_path(&settings.config_file_pathbuf, config) {
+        match confy::store_path(&settings.paths.config_file, config) {
             Ok(()) => {}
             Err(_) => {
                 eprintln!("[!] Failed to write configuration file.");
@@ -298,8 +298,8 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         };
 
         match fs::write(
-            settings.slack_alarm_template_pathbuf,
-            &settings.slack_alarm_template_body,
+            settings.paths.slack_alarm_template,
+            &settings.slack.alarm_template_body,
         ) {
             Ok(()) => {}
             Err(_) => {
@@ -309,8 +309,8 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         }
 
         match fs::write(
-            settings.slack_restored_template_pathbuf,
-            &settings.slack_restored_template_body,
+            settings.paths.slack_restored_template,
+            &settings.slack.restored_template_body,
         ) {
             Ok(()) => {}
             Err(_) => {
@@ -320,8 +320,8 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         }
 
         match fs::write(
-            settings.batsign_urls_pathbuf,
-            settings.batsign_urls.join("\n"),
+            settings.paths.batsign_urls,
+            settings.batsign.urls.join("\n"),
         ) {
             Ok(()) => {}
             Err(_) => {
@@ -331,8 +331,8 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         }
 
         match fs::write(
-            settings.batsign_alarm_template_pathbuf,
-            &settings.batsign_alarm_template_body,
+            settings.paths.batsign_alarm_template,
+            &settings.batsign.alarm_template_body,
         ) {
             Ok(()) => {}
             Err(_) => {
@@ -342,8 +342,8 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         }
 
         match fs::write(
-            settings.batsign_restored_template_pathbuf,
-            &settings.batsign_restored_template_body,
+            settings.paths.batsign_restored_template,
+            &settings.batsign.restored_template_body,
         ) {
             Ok(()) => {}
             Err(_) => {
@@ -354,7 +354,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
 
         println!(
             "Configuration and resources written successfully to `{}`.",
-            settings.resource_dir_pathbuf.to_str().unwrap()
+            settings.paths.resource_dir.to_str().unwrap()
         );
         return Err(process::ExitCode::SUCCESS);
     }

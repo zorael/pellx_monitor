@@ -7,9 +7,8 @@ use crate::cli::Cli;
 use crate::config; //::{FileConfig, read_resource_file};
 use crate::defaults;
 
-/// Application settings, including defaults and sanity checks.
 #[derive(Debug, Serialize)]
-pub struct Settings {
+pub struct GpioSettings {
     /// GPIO pin number to monitor.
     pub pin_number: u8,
 
@@ -18,57 +17,130 @@ pub struct Settings {
 
     /// Time the GPIO pin must be HIGH or LOW before qualifying as a valid change.
     pub hold: Duration,
+}
 
-    /// Minimum time between sending notifications, to avoid spamming.
-    pub time_between_batsigns: Duration,
+impl Default for GpioSettings {
+    fn default() -> Self {
+        Self {
+            pin_number: defaults::gpio::PIN_NUMBER,
+            poll_interval: defaults::gpio::POLL_INTERVAL,
+            hold: defaults::gpio::HOLD,
+        }
+    }
+}
 
-    /// Time to wait before retrying to send a notification after a failure.
-    pub time_between_batsign_retries: Duration,
-
-    /// Minimum time between sending Slack notifications, to avoid spamming.
-    pub time_between_slack_notifications: Duration,
-
-    /// Time to wait before retrying to send a Slack notification after a failure.
-    pub time_between_slack_notification_retries: Duration,
-
-    /// Path to the resource directory, which contains the configuration file and other resources.
-    pub resource_dir_pathbuf: PathBuf,
-
-    /// Path to the configuration file, resolved at runtime.
-    pub config_file_pathbuf: PathBuf,
-
+#[derive(Debug, Serialize)]
+pub struct SlackSettings {
     /// Optional Slack webhook URL for sending notifications to Slack.
-    pub slack_webhook_url: String,
-
-    /// Path to the Slack alarm message template file.
-    pub slack_alarm_template_pathbuf: PathBuf,
-
-    /// Path to the Slack restored message template file.
-    pub slack_restored_template_pathbuf: PathBuf,
+    pub webhook_url: String,
 
     /// Text body of the Slack alarm message template.
-    pub slack_alarm_template_body: String,
+    pub alarm_template_body: String,
 
     /// Text body of the Slack restored message template.
-    pub slack_restored_template_body: String,
+    pub restored_template_body: String,
 
-    /// Path to the Batsign URLs file, resolved at runtime.
-    pub batsign_urls_pathbuf: PathBuf,
+    /// Minimum time between sending Slack notifications, to avoid spamming.
+    pub notification_interval: Duration,
 
+    /// Time to wait before retrying to send a Slack notification after a failure.
+    pub retry_interval: Duration,
+}
+
+impl Default for SlackSettings {
+    fn default() -> Self {
+        Self {
+            webhook_url: String::from(defaults::slack::DUMMY_WEBHOOK_URL),
+            alarm_template_body: String::from(defaults::slack::ALARM_MESSAGE_TEMPLATE_BODY),
+            restored_template_body: String::from(defaults::slack::RESTORED_MESSAGE_TEMPLATE_BODY),
+            notification_interval: defaults::slack::NOTIFICATION_INTERVAL,
+            retry_interval: defaults::slack::RETRY_INTERVAL,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct BatsignSettings {
     /// List of Batsign URLs to send notifications to.
-    pub batsign_urls: Vec<String>,
-
-    /// Path to the alarm message template file, resolved at runtime.
-    pub batsign_alarm_template_pathbuf: PathBuf,
-
-    /// Path to the restored message template file, resolved at runtime.
-    pub batsign_restored_template_pathbuf: PathBuf,
+    pub urls: Vec<String>,
 
     /// Path to the Batsign alarm message template file.
-    pub batsign_alarm_template_body: String,
+    pub alarm_template_body: String,
 
     /// Path to the Batsign restored message template file.
-    pub batsign_restored_template_body: String,
+    pub restored_template_body: String,
+
+    /// Minimum time between sending notifications, to avoid spamming.
+    pub notification_interval: Duration,
+
+    /// Time to wait before retrying to send a notification after a failure.
+    pub retry_interval: Duration,
+}
+
+impl Default for BatsignSettings {
+    fn default() -> Self {
+        Self {
+            urls: Vec::new(),
+            alarm_template_body: String::from(defaults::batsign::ALARM_MESSAGE_TEMPLATE_BODY),
+            restored_template_body: String::from(defaults::batsign::RESTORED_MESSAGE_TEMPLATE_BODY),
+            notification_interval: defaults::batsign::NOTIFICATION_INTERVAL,
+            retry_interval: defaults::batsign::RETRY_INTERVAL,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct PathBufs {
+    /// Path to the resource directory, which contains the configuration file and other resources.
+    pub resource_dir: PathBuf,
+
+    /// Path to the configuration file, resolved at runtime.
+    pub config_file: PathBuf,
+
+    /// Path to the Slack alarm message template file.
+    pub slack_alarm_template: PathBuf,
+
+    /// Path to the Slack restored message template file.
+    pub slack_restored_template: PathBuf,
+
+    /// Path to the Batsign URLs file, resolved at runtime.
+    pub batsign_urls: PathBuf,
+
+    /// Path to the alarm message template file, resolved at runtime.
+    pub batsign_alarm_template: PathBuf,
+
+    /// Path to the restored message template file, resolved at runtime.
+    pub batsign_restored_template: PathBuf,
+}
+
+impl Default for PathBufs {
+    fn default() -> Self {
+        Self {
+            resource_dir: PathBuf::new(),
+            config_file: PathBuf::new(),
+            slack_alarm_template: PathBuf::new(),
+            slack_restored_template: PathBuf::new(),
+            batsign_urls: PathBuf::new(),
+            batsign_alarm_template: PathBuf::new(),
+            batsign_restored_template: PathBuf::new(),
+        }
+    }
+}
+
+/// Application settings, including defaults and sanity checks.
+#[derive(Debug, Serialize)]
+pub struct Settings {
+    /// GPIO settings.
+    pub gpio: GpioSettings,
+
+    /// Slack settings.
+    pub slack: SlackSettings,
+
+    /// Batsign settings.
+    pub batsign: BatsignSettings,
+
+    /// Paths to resources, resolved at runtime.
+    pub paths: PathBufs,
 
     /// If true, the program will not send any Batsign notifications and will only print what it would do.
     pub dry_run: bool,
@@ -81,26 +153,10 @@ impl Default for Settings {
     /// Default values for settings, used as a base for applying config file and CLI overrides.
     fn default() -> Self {
         Self {
-            pin_number: defaults::DEFAULT_PIN,
-            poll_interval: defaults::DEFAULT_POLL_INTERVAL,
-            hold: defaults::DEFAULT_HOLD,
-            time_between_batsigns: defaults::DEFAULT_TIME_BETWEEN_BATSIGNS,
-            time_between_batsign_retries: defaults::DEFAULT_TIME_BETWEEN_BATSIGN_RETRIES,
-            time_between_slack_notifications: defaults::DEFAULT_TIME_BETWEEN_SLACK_NOTIFICATIONS,
-            time_between_slack_notification_retries: defaults::DEFAULT_TIME_BETWEEN_SLACK_RETRIES,
-            slack_webhook_url: String::from(defaults::SLACK_WEBHOOK_URL_PLACEHOLDER),
-            resource_dir_pathbuf: PathBuf::new(),
-            config_file_pathbuf: PathBuf::new(),
-            slack_alarm_template_pathbuf: PathBuf::new(),
-            slack_restored_template_pathbuf: PathBuf::new(),
-            slack_alarm_template_body: String::from(defaults::SLACK_ALARM_TEMPLATE),
-            slack_restored_template_body: String::from(defaults::SLACK_RESTORED_TEMPLATE),
-            batsign_urls_pathbuf: PathBuf::new(),
-            batsign_urls: Vec::new(),
-            batsign_alarm_template_body: String::from(defaults::BATSIGN_ALARM_TEMPLATE),
-            batsign_restored_template_body: String::from(defaults::BATSIGN_RESTORED_TEMPLATE),
-            batsign_alarm_template_pathbuf: PathBuf::new(),
-            batsign_restored_template_pathbuf: PathBuf::new(),
+            gpio: GpioSettings::default(),
+            slack: SlackSettings::default(),
+            batsign: BatsignSettings::default(),
+            paths: PathBufs::default(),
             dry_run: false,
             debug: false,
         }
@@ -111,8 +167,8 @@ impl Settings {
     /// Applies the resource directory setting, resolving the resource paths based on the provided directory or the default. This is used to set up the resource paths before loading resources from disk.
     pub fn with_resource_dir(mut self, resource_dir: &Option<String>) -> Self {
         match resource_dir {
-            Some(dir) => self.resource_dir_pathbuf = PathBuf::from(dir),
-            None => self.resource_dir_pathbuf = config::resolve_default_resource_directory(),
+            Some(dir) => self.paths.resource_dir = PathBuf::from(dir),
+            None => self.paths.resource_dir = config::resolve_default_resource_directory(),
         }
 
         self
@@ -124,37 +180,37 @@ impl Settings {
 
         let mut vec = Vec::new();
 
-        if self.pin_number > MAX_GPIO_PIN {
+        if self.gpio.pin_number > MAX_GPIO_PIN {
             vec.push(format!(
                 "Invalid GPIO pin number: {}. Must be between 0 and {}.",
-                self.pin_number, MAX_GPIO_PIN
+                self.gpio.pin_number, MAX_GPIO_PIN
             ));
         }
 
-        if self.poll_interval == Duration::ZERO {
+        if self.gpio.poll_interval == Duration::ZERO {
             vec.push("Poll interval must be greater than zero.".to_string());
         }
 
-        if self.time_between_batsigns == Duration::ZERO {
+        if self.batsign.notification_interval == Duration::ZERO {
             vec.push("Time between notifications must be greater than zero.".to_string());
         }
 
-        if self.time_between_batsign_retries == Duration::ZERO {
+        if self.batsign.retry_interval == Duration::ZERO {
             vec.push("Time between notification retries must be greater than zero.".to_string());
         }
 
-        if self.time_between_slack_notifications == Duration::ZERO {
+        if self.slack.notification_interval == Duration::ZERO {
             vec.push("Time between Slack notifications must be greater than zero.".to_string());
         }
 
-        if self.time_between_slack_notification_retries == Duration::ZERO {
+        if self.slack.retry_interval == Duration::ZERO {
             vec.push(
                 "Time between Slack notification retries must be greater than zero.".to_string(),
             );
         }
 
-        if !self.batsign_urls.is_empty() {
-            for url in self.batsign_urls.iter() {
+        if !self.batsign.urls.is_empty() {
+            for url in self.batsign.urls.iter() {
                 match url.trim() {
                     url if !url.starts_with("https://") => vec.push(format!(
                         "Batsign URL \"{url}\" does not seem to be a valid URL."
@@ -164,9 +220,9 @@ impl Settings {
             }
         }
 
-        if !self.slack_webhook_url.is_empty()
-            && self.slack_webhook_url != defaults::SLACK_WEBHOOK_URL_PLACEHOLDER
-            && !self.slack_webhook_url.starts_with("https://")
+        if !self.slack.webhook_url.is_empty()
+            && self.slack.webhook_url != defaults::slack::DUMMY_WEBHOOK_URL
+            && !self.slack.webhook_url.starts_with("https://")
         {
             vec.push("Slack webhook URL does not seem to be a valid URL.".to_string());
         }
@@ -176,69 +232,75 @@ impl Settings {
 
     /// Print the settings in a human-readable format.
     pub fn print(&self) {
-        println!("GPIO pin number:              {}", self.pin_number);
+        println!("GPIO pin number:              {}", self.gpio.pin_number);
 
         println!(
             "Poll interval:                {}",
-            humantime::format_duration(self.poll_interval)
+            humantime::format_duration(self.gpio.poll_interval)
         );
 
         println!(
             "Hold:                         {}",
-            humantime::format_duration(self.hold)
+            humantime::format_duration(self.gpio.hold)
         );
 
         println!(
             "Time between notifications:   {}",
-            humantime::format_duration(self.time_between_batsigns)
+            humantime::format_duration(self.batsign.notification_interval)
         );
 
         println!(
             "Notification retry time:      {}",
-            humantime::format_duration(self.time_between_batsign_retries)
+            humantime::format_duration(self.batsign.retry_interval)
         );
 
-        println!("Batsign URLs:                 {:?}", self.batsign_urls);
+        println!("Batsign URLs:                 {:?}", self.batsign.urls);
         println!(
             "Resource directory:           {:?}",
-            self.resource_dir_pathbuf
+            self.paths.resource_dir,
         );
     }
 
     /// Resolves the resource paths based on the resource directory. This is used to set up the resource paths before loading resources from disk.
     pub fn resolve_resource_paths(&mut self) {
-        self.config_file_pathbuf = self.resource_dir_pathbuf.join(defaults::CONFIG_FILENAME);
+        self.paths.config_file = self.paths.resource_dir.join(defaults::CONFIG_FILENAME);
 
-        self.slack_alarm_template_pathbuf = self
-            .resource_dir_pathbuf
-            .join(defaults::SLACK_ALARM_TEMPLATE_FILENAME);
+        self.paths.slack_alarm_template = self
+            .paths
+            .resource_dir
+            .join(defaults::slack::ALARM_MESSAGE_TEMPLATE_FILENAME);
 
-        self.slack_restored_template_pathbuf = self
-            .resource_dir_pathbuf
-            .join(defaults::SLACK_RESTORED_TEMPLATE_FILENAME);
+        self.paths.slack_restored_template = self
+            .paths
+            .resource_dir
+            .join(defaults::slack::RESTORED_MESSAGE_TEMPLATE_FILENAME);
 
-        self.batsign_urls_pathbuf = self.resource_dir_pathbuf.join(defaults::BATSIGNS_FILENAME);
+        self.paths.batsign_urls = self
+            .paths
+            .resource_dir
+            .join(defaults::batsign::URLS_FILENAME);
 
-        self.batsign_alarm_template_pathbuf = self
-            .resource_dir_pathbuf
-            .join(defaults::BATSIGN_ALARM_TEMPLATE_FILENAME);
+        self.paths.batsign_alarm_template = self
+            .paths
+            .resource_dir
+            .join(defaults::batsign::ALARM_MESSAGE_TEMPLATE_FILENAME);
 
-        self.batsign_restored_template_pathbuf = self
-            .resource_dir_pathbuf
-            .join(defaults::BATSIGN_RESTORED_TEMPLATE_FILENAME);
+        self.paths.batsign_restored_template = self
+            .paths
+            .resource_dir
+            .join(defaults::batsign::RESTORED_MESSAGE_TEMPLATE_FILENAME);
     }
 
     /// Loads the Batsign URLs and message templates from disk, returning an error if any of the files cannot be read. This is used to load the resources after resolving the resource paths.
     pub fn load_resources_from_disk(&mut self) -> io::Result<()> {
-        self.slack_alarm_template_body =
-            read_to_trimmed_string(&self.slack_alarm_template_pathbuf)?;
-        self.slack_restored_template_body =
-            read_to_trimmed_string(&self.slack_restored_template_pathbuf)?;
-        self.batsign_urls = config::read_file_lines_into_vec(&self.batsign_urls_pathbuf)?;
-        self.batsign_alarm_template_body =
-            read_to_trimmed_string(&self.batsign_alarm_template_pathbuf)?;
-        self.batsign_restored_template_body =
-            read_to_trimmed_string(&self.batsign_restored_template_pathbuf)?;
+        self.slack.alarm_template_body = read_to_trimmed_string(&self.paths.slack_alarm_template)?;
+        self.slack.restored_template_body =
+            read_to_trimmed_string(&self.paths.slack_restored_template)?;
+        self.batsign.urls = config::read_file_lines_into_vec(&self.paths.batsign_urls)?;
+        self.batsign.alarm_template_body =
+            read_to_trimmed_string(&self.paths.batsign_alarm_template)?;
+        self.batsign.restored_template_body =
+            read_to_trimmed_string(&self.paths.batsign_restored_template)?;
         Ok(())
     }
 }
@@ -249,38 +311,28 @@ pub fn apply_file(mut s: Settings, file: &Option<config::FileConfig>) -> Setting
         return s;
     };
 
-    if let Some(pin_number) = file.pin_number {
-        s.pin_number = pin_number;
+    s.gpio.pin_number = file.gpio.pin_number;
+    s.gpio.poll_interval = file.gpio.poll_interval;
+    s.gpio.hold = file.gpio.hold;
+
+    if let Some(time_between_batsigns) = file.batsign.notification_interval {
+        s.batsign.notification_interval = time_between_batsigns;
     }
 
-    if let Some(poll_interval) = file.poll_interval {
-        s.poll_interval = poll_interval;
+    if let Some(time_between_batsigns_retries) = file.batsign.retry_interval {
+        s.batsign.retry_interval = time_between_batsigns_retries;
     }
 
-    if let Some(hold) = file.hold {
-        s.hold = hold;
+    if let Some(time_between_slack_notifications) = file.slack.notification_interval {
+        s.slack.notification_interval = time_between_slack_notifications;
     }
 
-    if let Some(time_between_batsigns) = file.time_between_batsigns {
-        s.time_between_batsigns = time_between_batsigns;
+    if let Some(time_between_slack_notification_retries) = file.slack.retry_interval {
+        s.slack.retry_interval = time_between_slack_notification_retries;
     }
 
-    if let Some(time_between_batsigns_retries) = file.time_between_batsign_retries {
-        s.time_between_batsign_retries = time_between_batsigns_retries;
-    }
-
-    if let Some(time_between_slack_notifications) = file.time_between_slack_notifications {
-        s.time_between_slack_notifications = time_between_slack_notifications;
-    }
-
-    if let Some(time_between_slack_notification_retries) =
-        file.time_between_slack_notification_retries
-    {
-        s.time_between_slack_notification_retries = time_between_slack_notification_retries;
-    }
-
-    if let Some(slack_webhook_url) = &file.slack_webhook_url {
-        s.slack_webhook_url = slack_webhook_url.clone();
+    if let Some(slack_webhook_url) = &file.slack.webhook_url {
+        s.slack.webhook_url = slack_webhook_url.clone();
     }
 
     s
@@ -288,33 +340,9 @@ pub fn apply_file(mut s: Settings, file: &Option<config::FileConfig>) -> Setting
 
 /// Applies CLI settings to the given settings, returning the resulting settings.
 pub fn apply_cli(mut s: Settings, cli: &Cli) -> Settings {
-    if let Some(pin_number) = cli.pin_number {
-        s.pin_number = pin_number;
-    }
-
-    if let Some(poll_interval) = cli.poll_interval {
-        s.poll_interval = poll_interval;
-    }
-
-    if let Some(hold) = cli.hold {
-        s.hold = hold;
-    }
-
-    /*if let Some(time_between_batsigns) = cli.time_between_batsigns {
-        s.time_between_batsigns = time_between_batsigns;
-    }
-
-    if let Some(time_between_batsigns_retries) = cli.time_between_batsign_retries {
-        s.time_between_batsign_retries = time_between_batsigns_retries;
-    }*/
-
-    /*if let Some(time_between_slack_notifications) = cli.time_between_slack_notifications {
-        s.time_between_slack_notifications = time_between_slack_notifications;
-    }
-
-    if let Some(time_between_slack_notification_retries) = cli.time_between_slack_notification_retries {
-        s.time_between_slack_notification_retries = time_between_slack_notification_retries;
-    }*/
+    /*if let Some(resource_dir) = &cli.resource_dir {
+        s.paths.resource_dir = PathBuf::from(resource_dir);
+    };*/
 
     s.dry_run = cli.dry_run;
     s.debug = cli.debug;

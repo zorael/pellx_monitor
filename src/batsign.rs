@@ -25,7 +25,7 @@ pub fn should_send_batsign_notification(
     settings: &Settings,
     state: &NotificationState,
 ) -> bool {
-    if settings.batsign_urls.is_empty() {
+    if settings.batsign.urls.is_empty() {
         return false;
     }
 
@@ -67,7 +67,7 @@ pub fn send_batsign_notification(
         return Ok(state);
     }
 
-    let statuses = match send_batsign_notification_impl(client, &settings.batsign_urls, message) {
+    let statuses = match send_batsign_notification_impl(client, &settings.batsign.urls, message) {
         Ok(statuses) => statuses,
         Err(e) => {
             eprintln!("[!] Could not reach Batsign: {e}");

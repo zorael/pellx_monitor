@@ -31,8 +31,8 @@ pub fn should_send_slack_notification(
     settings: &Settings,
     state: &NotificationState,
 ) -> bool {
-    if settings.slack_webhook_url.is_empty()
-        || settings.slack_webhook_url == defaults::SLACK_WEBHOOK_URL_PLACEHOLDER
+    if settings.slack.webhook_url.is_empty()
+        || settings.slack.webhook_url == defaults::slack::DUMMY_WEBHOOK_URL
     {
         return false;
     }
@@ -73,12 +73,12 @@ pub fn send_slack_notification(
     if settings.dry_run {
         println!("Dry run: would otherwise have sent Slack notification");
         state.previous = Some(now);
-        return Ok(state.clone());
+        return Ok(state);
     }
 
-    match &settings.slack_webhook_url {
+    match &settings.slack.webhook_url {
         url if url.is_empty() => {}
-        url if url == defaults::SLACK_WEBHOOK_URL_PLACEHOLDER => {}
+        url if url == defaults::slack::DUMMY_WEBHOOK_URL => {}
         url => match send_slack_notification_impl(client, url, message, emoji) {
             Ok(()) => {
                 println!("Sent Slack notification");
@@ -91,5 +91,5 @@ pub fn send_slack_notification(
         },
     }
 
-    Ok(state.clone())
+    Ok(state)
 }

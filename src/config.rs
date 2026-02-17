@@ -5,49 +5,98 @@ use std::{env, fs, io, time};
 use crate::defaults;
 use crate::settings::Settings;
 
+#[derive(Clone, Serialize, Deserialize)]
+pub struct GpioSettings {
+    /// GPIO pin number to monitor.
+    pub pin_number: u8,
+
+    /// Poll interval for checking the GPIO pin.
+    #[serde(with = "humantime_serde")]
+    pub poll_interval: time::Duration,
+
+    /// Duration the pin must be HIGH or LOW before qualifying as a valid change.
+    #[serde(with = "humantime_serde")]
+    pub hold: time::Duration,
+}
+
+impl Default for GpioSettings {
+    /// Default values for the GPIO settings.
+    fn default() -> Self {
+        Self {
+            pin_number: defaults::gpio::PIN_NUMBER,
+            poll_interval: defaults::gpio::POLL_INTERVAL,
+            hold: defaults::gpio::HOLD,
+        }
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct SlackSettings {
+    /// Optional Slack webhook URL for sending notifications to Slack.
+    pub webhook_url: Option<String>,
+
+    /// Minimum time between sending Slack notifications.
+    #[serde(with = "humantime_serde")]
+    pub notification_interval: Option<time::Duration>,
+
+    /// Time to wait before retrying to send a Slack notification after a failure.
+    #[serde(with = "humantime_serde")]
+    pub retry_interval: Option<time::Duration>,
+}
+
+impl Default for SlackSettings {
+    /// Default values for the Slack settings.
+    fn default() -> Self {
+        Self {
+            webhook_url: Some(defaults::slack::DUMMY_WEBHOOK_URL.to_string()),
+            notification_interval: Some(defaults::slack::NOTIFICATION_INTERVAL),
+            retry_interval: Some(defaults::slack::RETRY_INTERVAL),
+        }
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct BatsignSettings {
+    /// Minimum time between sending Batsign notifications.
+    #[serde(with = "humantime_serde")]
+    pub notification_interval: Option<time::Duration>,
+
+    /// Time to wait before retrying to send a Batsign notification after a failure.
+    #[serde(with = "humantime_serde")]
+    pub retry_interval: Option<time::Duration>,
+}
+
+impl Default for BatsignSettings {
+    /// Default values for the Batsign settings.
+    fn default() -> Self {
+        Self {
+            notification_interval: Some(defaults::batsign::NOTIFICATION_INTERVAL),
+            retry_interval: Some(defaults::batsign::RETRY_INTERVAL),
+        }
+    }
+}
+
 /// Configuration file structure, which overrides default settings and is overridden by CLI args.
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct FileConfig {
-    /// GPIO pin number to monitor.
-    pub pin_number: Option<u8>,
+    /// GPIO settings loaded from the configuration file.
+    pub gpio: GpioSettings,
 
-    /// Poll interval for checking the GPIO pin.
-    #[serde(with = "humantime_serde")]
-    pub poll_interval: Option<time::Duration>,
+    /// Slack settings loaded from the configuration file.
+    pub slack: SlackSettings,
 
-    /// Duration the pin must be HIGH or LOW before qualifying as a valid change.
-    #[serde(with = "humantime_serde")]
-    pub hold: Option<time::Duration>,
-
-    /// Optional Slack webhook URL for sending notifications to Slack.
-    pub slack_webhook_url: Option<String>,
-
-    pub time_between_slack_notifications: Option<time::Duration>,
-
-    pub time_between_slack_notification_retries: Option<time::Duration>,
-
-    /// Minimum time between sending notifications.
-    #[serde(with = "humantime_serde")]
-    pub time_between_batsigns: Option<time::Duration>,
-
-    /// Time to wait before retrying to send a notification after a failure.
-    #[serde(with = "humantime_serde")]
-    pub time_between_batsign_retries: Option<time::Duration>,
+    /// Batsign settings loaded from the configuration file.
+    pub batsign: BatsignSettings,
 }
 
 impl Default for FileConfig {
-    /// Default values for the configuration file, required by confy but not used directly.
+    /// Default values for the configuration file.
     fn default() -> Self {
         Self {
-            pin_number: None,
-            poll_interval: None,
-            hold: None,
-            slack_webhook_url: None,
-            time_between_slack_notifications: None,
-            time_between_slack_notification_retries: None,
-            time_between_batsigns: None,
-            time_between_batsign_retries: None,
+            gpio: GpioSettings::default(),
+            slack: SlackSettings::default(),
+            batsign: BatsignSettings::default(),
         }
     }
 }
@@ -56,16 +105,20 @@ impl From<&Settings> for FileConfig {
     /// Converts the resolved settings into a FileConfig, which can be saved to disk. This is used when the user wants to save the current configuration.
     fn from(s: &Settings) -> Self {
         Self {
-            pin_number: Some(s.pin_number),
-            poll_interval: Some(s.poll_interval),
-            hold: Some(s.hold),
-            slack_webhook_url: Some(s.slack_webhook_url.clone()),
-            time_between_slack_notifications: Some(s.time_between_slack_notifications),
-            time_between_slack_notification_retries: Some(
-                s.time_between_slack_notification_retries,
-            ),
-            time_between_batsigns: Some(s.time_between_batsigns),
-            time_between_batsign_retries: Some(s.time_between_batsign_retries),
+            gpio: GpioSettings {
+                pin_number: s.gpio.pin_number,
+                poll_interval: s.gpio.poll_interval,
+                hold: s.gpio.hold,
+            },
+            slack: SlackSettings {
+                webhook_url: Some(s.slack.webhook_url.clone()),
+                notification_interval: Some(s.slack.notification_interval),
+                retry_interval: Some(s.slack.retry_interval),
+            },
+            batsign: BatsignSettings {
+                notification_interval: Some(s.batsign.notification_interval),
+                retry_interval: Some(s.batsign.retry_interval),
+            },
         }
     }
 }
@@ -74,9 +127,7 @@ impl From<&Settings> for FileConfig {
 pub fn deserialize_config_file(
     settings: &Settings,
 ) -> Result<Option<FileConfig>, confy::ConfyError> {
-    let config_pathbuf = settings
-        .resource_dir_pathbuf
-        .join(defaults::CONFIG_FILENAME);
+    let config_pathbuf = settings.paths.resource_dir.join(defaults::CONFIG_FILENAME);
 
     match confy::load_path(config_pathbuf) {
         Ok(cfg) => Ok(Some(cfg)),
@@ -86,6 +137,10 @@ pub fn deserialize_config_file(
 
 /// Resolves the configuration directory path, returning the directory as a string and an optional PathBuf. This is used for operations that need to know the config directory, such as saving the config file.
 pub fn resolve_default_resource_directory() -> PathBuf {
+    if let Some(path) = env::var_os("PELLX_MONITOR_RESOURCE_DIR") {
+        return PathBuf::from(path);
+    }
+
     let base = env::var_os("XDG_CONFIG_HOME")
         .map(PathBuf::from)
         .or_else(|| env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))

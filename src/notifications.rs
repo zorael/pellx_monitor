@@ -33,13 +33,13 @@ pub fn format_notification_message(template: &str, settings: &Settings, since: &
             "{since}",
             &humantime::format_duration(since.elapsed()).to_string(),
         )
-        .replace("{pin_number}", &settings.pin_number.to_string())
+        .replace("{pin_number}", &settings.gpio.pin_number.to_string())
         .replace(
             "{poll_interval}",
-            &humantime::format_duration(settings.poll_interval).to_string(),
+            &humantime::format_duration(settings.gpio.poll_interval).to_string(),
         )
         .replace(
             "{hold}",
-            &humantime::format_duration(settings.hold).to_string(),
+            &humantime::format_duration(settings.gpio.hold).to_string(),
         )
 }
