@@ -81,6 +81,7 @@ fn main() -> process::ExitCode {
         Some(settings.slack.notification_interval),
         settings.slack.retry_interval,
     );
+
     let mut batsign_low_state = NotificationState::new(None, settings.batsign.retry_interval);
     let mut batsign_high_state = NotificationState::new(
         Some(settings.batsign.notification_interval),

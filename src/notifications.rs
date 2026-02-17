@@ -59,9 +59,7 @@ pub fn should_send_notification(
         return false;
     }
 
-    if let Some(then) = state.previous
-        && let Some(repeat_interval) = state.repeat_interval
-    {
+    if let (Some(then), Some(repeat_interval)) = (state.previous, state.repeat_interval) {
         if now.duration_since(then) < repeat_interval {
             return false;
         }

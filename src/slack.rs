@@ -30,6 +30,7 @@ fn send_slack_notification_impl(
         .post(slack_webhook_url)
         .body(payload.to_string())
         .send()?;
+
     Ok(())
 }
 
