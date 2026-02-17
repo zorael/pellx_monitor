@@ -109,7 +109,8 @@ fn main() -> process::ExitCode {
                 }
 
                 let now = Instant::now();
-                let low_since = low_since.expect("low_since should be set with .get_or_insert");
+                let low_since =
+                    low_since.expect("low_since should have been set with .get_or_insert_with");
                 high_since = None;
 
                 let should_send_slack_notification = !settings.slack.webhook_url.is_empty()
@@ -183,7 +184,8 @@ fn main() -> process::ExitCode {
                 }
 
                 let now = Instant::now();
-                let high_since = high_since.expect("high_since should be set with .get_or_insert");
+                let high_since =
+                    high_since.expect("high_since should have been set with .get_or_insert_with");
                 low_since = None;
 
                 let should_send_slack_notification = !settings.slack.webhook_url.is_empty()
@@ -259,13 +261,21 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
             Ok(()) => {
                 println!(
                     "Resource directory `{}` created.",
-                    settings.paths.resource_dir.to_str().unwrap()
+                    settings
+                        .paths
+                        .resource_dir
+                        .to_str()
+                        .expect("resource_dir path should be valid UTF-8")
                 );
             }
             Err(e) => {
                 eprintln!(
                     "[!] Failed to create resource directory `{}`: {e}",
-                    settings.paths.resource_dir.to_str().unwrap()
+                    settings
+                        .paths
+                        .resource_dir
+                        .to_str()
+                        .expect("resource_dir path should be valid UTF-8")
                 );
                 return Err(process::ExitCode::FAILURE);
             }
@@ -288,7 +298,11 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         Err(e) => {
             eprintln!(
                 "[!] Failed to read configuration file `{}`: {e}",
-                settings.paths.config_file.to_str().unwrap()
+                settings
+                    .paths
+                    .config_file
+                    .to_str()
+                    .expect("config_file path should be valid UTF-8")
             );
             return Err(process::ExitCode::FAILURE);
         }
@@ -357,7 +371,11 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
 
         println!(
             "Configuration and resources written successfully to `{}`.",
-            settings.paths.resource_dir.to_str().unwrap()
+            settings
+                .paths
+                .resource_dir
+                .to_str()
+                .expect("resource_dir path should be valid UTF-8")
         );
         return Err(process::ExitCode::SUCCESS);
     }
