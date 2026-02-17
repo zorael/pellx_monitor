@@ -383,8 +383,6 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         return Err(process::ExitCode::SUCCESS);
     }
 
-    settings = settings::apply_file(settings, &config); //.clone());
-    settings = settings::apply_cli(settings, cli);
     Ok(settings)
 }
 
