@@ -69,7 +69,10 @@ fn main() -> process::ExitCode {
     let pin = match gpio.get(settings.gpio.pin_number) {
         Ok(p) => p.into_input_pullup(),
         Err(e) => {
-            eprintln!("[!] Failed to setup GPIO{}: {e}", settings.gpio.pin_number);
+            eprintln!(
+                "[!] Failed to set mode of GPIO{}: {e}",
+                settings.gpio.pin_number
+            );
             return process::ExitCode::FAILURE;
         }
     };
