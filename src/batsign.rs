@@ -9,8 +9,18 @@ pub fn send_batsign_notification_impl(
     client: &Client,
     urls: &Vec<String>,
     message: &str,
+    dry_run: bool,
 ) -> Result<Vec<reqwest::StatusCode>, reqwest::Error> {
     let mut statuses = Vec::new();
+
+    if dry_run {
+        println!(
+            "Dry run: would otherwise have sent Batsign notification to {} URLs:",
+            urls.len()
+        );
+        println!("\n{}\n", message);
+        return Ok(statuses);
+    }
 
     for url in urls {
         let res = client.post(url).body(message.to_string()).send()?;
@@ -61,13 +71,12 @@ pub fn send_batsign_notification(
     let mut state = state.clone();
     state.reset();
 
-    if settings.dry_run {
-        println!("Dry run: would otherwise have sent Batsign notification");
-        state.previous = Some(now);
-        return Ok(state);
-    }
-
-    let statuses = match send_batsign_notification_impl(client, &settings.batsign.urls, message) {
+    let statuses = match send_batsign_notification_impl(
+        client,
+        &settings.batsign.urls,
+        message,
+        settings.dry_run,
+    ) {
         Ok(statuses) => statuses,
         Err(e) => {
             eprintln!("[!] Could not reach Batsign: {e}");

@@ -14,10 +14,17 @@ fn send_slack_notification_impl(
     slack_webhook_url: &str,
     message: &str,
     emoji: &str,
+    dry_run: bool,
 ) -> Result<(), reqwest::Error> {
     let payload = serde_json::json!({
         "text": format!("{} {}", emoji, message)
     });
+
+    if dry_run {
+        println!("Dry run: would otherwise have sent Slack notification");
+        println!("\n{}\n", payload);
+        return Ok(());
+    }
 
     client
         .post(slack_webhook_url)
@@ -70,16 +77,10 @@ pub fn send_slack_notification(
     let mut state = state.clone();
     state.reset();
 
-    if settings.dry_run {
-        println!("Dry run: would otherwise have sent Slack notification");
-        state.previous = Some(now);
-        return Ok(state);
-    }
-
     match &settings.slack.webhook_url {
         url if url.is_empty() => {}
         url if url == defaults::slack::DUMMY_WEBHOOK_URL => {}
-        url => match send_slack_notification_impl(client, url, message, emoji) {
+        url => match send_slack_notification_impl(client, url, message, emoji, settings.dry_run) {
             Ok(()) => {
                 println!("Sent Slack notification");
                 state.previous = Some(now);
