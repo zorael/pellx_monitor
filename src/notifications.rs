@@ -11,6 +11,7 @@ pub struct NotificationState {
 }
 
 impl NotificationState {
+    /// Creates a new `NotificationState` with the specified repeat interval and retry delay.
     pub fn new(repeat_interval: Option<Duration>, retry_delay: Duration) -> Self {
         Self {
             previous: None,
@@ -20,9 +21,11 @@ impl NotificationState {
         }
     }
 
-    pub fn reset(&mut self) {
+    /// Resets the notification state by clearing the previous success and failure timestamps.
+    pub fn reset(&mut self) -> Self {
         self.previous = None;
         self.previous_failure = None;
+        self.clone()
     }
 }
 
@@ -44,6 +47,7 @@ pub fn format_notification_message(template: &str, settings: &Settings, since: &
         )
 }
 
+/// Determines whether a notification should be sent based on the current time, settings, and notification state.
 pub fn should_send(now: Instant, settings: &Settings, state: &NotificationState) -> bool {
     if let Some(then) = state.previous_failure
         && now.duration_since(then) < state.retry_delay
