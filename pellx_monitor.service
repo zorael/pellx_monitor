@@ -1,0 +1,13 @@
+[Unit]
+Description=PellX pellets burner monitor and error-reporter
+After=network.target NetworkManager-wait-online.service systemd-networkd-wait-online.service
+
+[Service]
+#Environment=PELLX_MONITOR_RESOURCE_DIR=/etc/pellx_monitor
+Type=simple
+ExecStart=/usr/local/bin/pellx_monitor
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=network.target
