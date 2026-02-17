@@ -63,8 +63,6 @@ pub fn should_send_notification(
         if now.duration_since(then) < repeat_interval {
             return false;
         }
-    } else {
-        return false;
     }
 
     if settings.debug {
