@@ -14,7 +14,13 @@ pub const DEFAULT_HOLD: Duration = Duration::from_secs(10);
 pub const DEFAULT_TIME_BETWEEN_BATSIGNS: Duration = Duration::from_secs(6 * 3600); // 6 hours
 
 /// Default time to wait before retrying to send a mail after a failure.
-pub const DEFAULT_TIME_BETWEEN_BATSIGNS_RETRY: Duration = Duration::from_secs(5 * 60); // 5 min
+pub const DEFAULT_TIME_BETWEEN_BATSIGN_RETRIES: Duration = Duration::from_secs(5 * 60); // 5 min
+
+/// Default minimum time between sending Slack notifications.
+pub const DEFAULT_TIME_BETWEEN_SLACK_NOTIFICATIONS: Duration = Duration::from_secs(12 * 3600); // 12 hours
+
+/// Default time to wait before retrying to send a Slack notification after a failure.
+pub const DEFAULT_TIME_BETWEEN_SLACK_RETRIES: Duration = Duration::from_secs(5 * 60); // 5 min
 
 /// Program name string.
 pub const PROGRAM_NAME: &str = "PellX Monitor";

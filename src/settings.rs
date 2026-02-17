@@ -1,5 +1,5 @@
 use serde::Serialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::{fs, io};
 
@@ -23,7 +23,13 @@ pub struct Settings {
     pub time_between_batsigns: Duration,
 
     /// Time to wait before retrying to send a notification after a failure.
-    pub time_between_batsigns_retry: Duration,
+    pub time_between_batsign_retries: Duration,
+
+    /// Minimum time between sending Slack notifications, to avoid spamming.
+    pub time_between_slack_notifications: Duration,
+
+    /// Time to wait before retrying to send a Slack notification after a failure.
+    pub time_between_slack_notification_retries: Duration,
 
     /// Path to the resource directory, which contains the configuration file and other resources.
     pub resource_dir_pathbuf: PathBuf,
@@ -34,12 +40,16 @@ pub struct Settings {
     /// Optional Slack webhook URL for sending notifications to Slack.
     pub slack_webhook_url: String,
 
+    /// Path to the Slack alarm message template file.
     pub slack_alarm_template_pathbuf: PathBuf,
 
+    /// Path to the Slack restored message template file.
     pub slack_restored_template_pathbuf: PathBuf,
 
+    /// Text body of the Slack alarm message template.
     pub slack_alarm_template_body: String,
 
+    /// Text body of the Slack restored message template.
     pub slack_restored_template_body: String,
 
     /// Path to the Batsign URLs file, resolved at runtime.
@@ -75,7 +85,9 @@ impl Default for Settings {
             poll_interval: defaults::DEFAULT_POLL_INTERVAL,
             hold: defaults::DEFAULT_HOLD,
             time_between_batsigns: defaults::DEFAULT_TIME_BETWEEN_BATSIGNS,
-            time_between_batsigns_retry: defaults::DEFAULT_TIME_BETWEEN_BATSIGNS_RETRY,
+            time_between_batsign_retries: defaults::DEFAULT_TIME_BETWEEN_BATSIGN_RETRIES,
+            time_between_slack_notifications: defaults::DEFAULT_TIME_BETWEEN_SLACK_NOTIFICATIONS,
+            time_between_slack_notification_retries: defaults::DEFAULT_TIME_BETWEEN_SLACK_RETRIES,
             slack_webhook_url: String::from(defaults::SLACK_WEBHOOK_URL_PLACEHOLDER),
             resource_dir_pathbuf: PathBuf::new(),
             config_file_pathbuf: PathBuf::new(),
@@ -108,12 +120,15 @@ impl Settings {
 
     /// Sanity check settings, returning a list of errors if any are found.
     pub fn sanity_check(&self) -> Result<(), Vec<String>> {
+        const MAX_GPIO_PIN: u8 = 27;
+
         let mut vec = Vec::new();
 
-        if self.pin_number > 27 {
+        if self.pin_number > MAX_GPIO_PIN {
             vec.push(format!(
-                "Invalid GPIO pin number: {}. Must be between 0 and 27.",
-                self.pin_number
+                "Invalid GPIO pin number: {}. Must be between 0 and {}.",
+                self.pin_number,
+                MAX_GPIO_PIN
             ));
         }
 
@@ -125,8 +140,16 @@ impl Settings {
             vec.push("Time between notifications must be greater than zero.".to_string());
         }
 
-        if self.time_between_batsigns_retry == Duration::ZERO {
+        if self.time_between_batsign_retries == Duration::ZERO {
             vec.push("Time between notification retries must be greater than zero.".to_string());
+        }
+
+        if self.time_between_slack_notifications == Duration::ZERO {
+            vec.push("Time between Slack notifications must be greater than zero.".to_string());
+        }
+
+        if self.time_between_slack_notification_retries == Duration::ZERO {
+            vec.push("Time between Slack notification retries must be greater than zero.".to_string());
         }
 
         if !self.dry_run {
@@ -168,7 +191,7 @@ impl Settings {
 
         println!(
             "Notification retry time:      {}",
-            humantime::format_duration(self.time_between_batsigns_retry)
+            humantime::format_duration(self.time_between_batsign_retries)
         );
 
         println!("Batsign URLs:                 {:?}", self.batsign_urls);
@@ -203,26 +226,11 @@ impl Settings {
 
     /// Loads the Batsign URLs and message templates from disk, returning an error if any of the files cannot be read. This is used to load the resources after resolving the resource paths.
     pub fn load_resources_from_disk(&mut self) -> io::Result<()> {
-        self.slack_alarm_template_body = fs::read_to_string(&self.slack_alarm_template_pathbuf)?
-            .to_string()
-            .trim()
-            .to_string();
-        self.slack_restored_template_body =
-            fs::read_to_string(&self.slack_restored_template_pathbuf)?
-                .to_string()
-                .trim()
-                .to_string();
+        self.slack_alarm_template_body = read_to_trimmed_string(&self.slack_alarm_template_pathbuf)?;
+        self.slack_restored_template_body = read_to_trimmed_string(&self.slack_restored_template_pathbuf)?;
         self.batsign_urls = config::read_file_lines_into_vec(&self.batsign_urls_pathbuf)?;
-        self.batsign_alarm_template_body =
-            fs::read_to_string(&self.batsign_alarm_template_pathbuf)?
-                .to_string()
-                .trim()
-                .to_string();
-        self.batsign_restored_template_body =
-            fs::read_to_string(&self.batsign_restored_template_pathbuf)?
-                .to_string()
-                .trim()
-                .to_string();
+        self.batsign_alarm_template_body = read_to_trimmed_string(&self.batsign_alarm_template_pathbuf)?;
+        self.batsign_restored_template_body = read_to_trimmed_string(&self.batsign_restored_template_pathbuf)?;
         Ok(())
     }
 }
@@ -249,8 +257,16 @@ pub fn apply_file(mut s: Settings, file: &Option<config::FileConfig>) -> Setting
         s.time_between_batsigns = time_between_batsigns;
     }
 
-    if let Some(time_between_batsigns_retry) = file.time_between_batsigns_retry {
-        s.time_between_batsigns_retry = time_between_batsigns_retry;
+    if let Some(time_between_batsigns_retries) = file.time_between_batsign_retries {
+        s.time_between_batsign_retries = time_between_batsigns_retries;
+    }
+
+    if let Some(time_between_slack_notifications) = file.time_between_slack_notifications {
+        s.time_between_slack_notifications = time_between_slack_notifications;
+    }
+
+    if let Some(time_between_slack_notification_retries) = file.time_between_slack_notification_retries {
+        s.time_between_slack_notification_retries = time_between_slack_notification_retries;
     }
 
     if let Some(slack_webhook_url) = &file.slack_webhook_url {
@@ -278,13 +294,24 @@ pub fn apply_cli(mut s: Settings, cli: &Cli) -> Settings {
         s.time_between_batsigns = time_between_batsigns;
     }
 
-    if let Some(time_between_batsigns_retry) = cli.time_between_batsigns_retry {
-        s.time_between_batsigns_retry = time_between_batsigns_retry;
+    if let Some(time_between_batsigns_retries) = cli.time_between_batsign_retries {
+        s.time_between_batsign_retries = time_between_batsigns_retries;
     }
 
+    /*if let Some(time_between_slack_notifications) = cli.time_between_slack_notifications {
+        s.time_between_slack_notifications = time_between_slack_notifications;
+    }
+
+    if let Some(time_between_slack_notification_retries) = cli.time_between_slack_notification_retries {
+        s.time_between_slack_notification_retries = time_between_slack_notification_retries;
+    }*/
+
     s.dry_run = cli.dry_run;
-
     s.debug = cli.debug;
-
     s
+}
+
+/// Reads a file into a string, trimming whitespace, and returning an error if the file cannot be read.
+fn read_to_trimmed_string(path: &Path) -> io::Result<String> {
+    Ok(fs::read_to_string(path)?.trim().to_string())
 }

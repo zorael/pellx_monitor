@@ -20,16 +20,21 @@ pub struct FileConfig {
     #[serde(with = "humantime_serde")]
     pub hold: Option<time::Duration>,
 
+    /// Optional Slack webhook URL for sending notifications to Slack.
+    pub slack_webhook_url: Option<String>,
+
+    pub time_between_slack_notifications: Option<time::Duration>,
+
+    pub time_between_slack_notification_retries: Option<time::Duration>,
+
     /// Minimum time between sending notifications.
     #[serde(with = "humantime_serde")]
     pub time_between_batsigns: Option<time::Duration>,
 
     /// Time to wait before retrying to send a notification after a failure.
     #[serde(with = "humantime_serde")]
-    pub time_between_batsigns_retry: Option<time::Duration>,
+    pub time_between_batsign_retries: Option<time::Duration>,
 
-    /// Optional Slack webhook URL for sending notifications to Slack.
-    pub slack_webhook_url: Option<String>,
 }
 
 impl Default for FileConfig {
@@ -39,9 +44,11 @@ impl Default for FileConfig {
             pin_number: None,
             poll_interval: None,
             hold: None,
-            time_between_batsigns: None,
-            time_between_batsigns_retry: None,
             slack_webhook_url: None,
+            time_between_slack_notifications: None,
+            time_between_slack_notification_retries: None,
+            time_between_batsigns: None,
+            time_between_batsign_retries: None,
         }
     }
 }
@@ -53,9 +60,11 @@ impl From<&Settings> for FileConfig {
             pin_number: Some(s.pin_number),
             poll_interval: Some(s.poll_interval),
             hold: Some(s.hold),
-            time_between_batsigns: Some(s.time_between_batsigns),
-            time_between_batsigns_retry: Some(s.time_between_batsigns_retry),
             slack_webhook_url: Some(s.slack_webhook_url.clone()),
+            time_between_slack_notifications: Some(s.time_between_slack_notifications),
+            time_between_slack_notification_retries: Some(s.time_between_slack_notification_retries),
+            time_between_batsigns: Some(s.time_between_batsigns),
+            time_between_batsign_retries: Some(s.time_between_batsign_retries),
         }
     }
 }
