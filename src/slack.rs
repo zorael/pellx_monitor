@@ -37,9 +37,8 @@ pub fn send_slack_notification(
     settings: &Settings,
     emoji: &str,
     message: &str,
-    state: &NotificationState,
-) -> Result<NotificationState, reqwest::Error> {
-    let mut state = state.clone();
+    state: &mut NotificationState,
+) -> Result<(), reqwest::Error> {
     state.reset();
 
     match send_slack_notification_impl(
@@ -52,13 +51,12 @@ pub fn send_slack_notification(
         Ok(()) => {
             println!("Sent Slack notification");
             state.previous = Some(now);
+            Ok(())
         }
         Err(e) => {
             eprintln!("[!] Could not send Slack notification: {e}");
             state.previous_failure = Some(now);
-            return Err(e);
+            Err(e)
         }
     }
-
-    Ok(state)
 }

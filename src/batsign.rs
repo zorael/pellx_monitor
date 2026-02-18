@@ -36,9 +36,8 @@ pub fn send_batsign_notification(
     now: Instant,
     settings: &Settings,
     message: &str,
-    state: &NotificationState,
-) -> Result<NotificationState, reqwest::Error> {
-    let mut state = state.clone();
+    state: &mut NotificationState,
+) -> Result<(), reqwest::Error> {
     state.reset();
 
     let statuses = match send_batsign_notification_impl(
@@ -73,5 +72,5 @@ pub fn send_batsign_notification(
         state.previous_failure = Some(now);
     }
 
-    Ok(state)
+    Ok(())
 }

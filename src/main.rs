@@ -139,10 +139,9 @@ fn main() -> process::ExitCode {
                         &settings,
                         slack::SLACK_SUCCESS_EMOJI,
                         message,
-                        &slack_low_state,
+                        &mut slack_low_state,
                     ) {
-                        Ok(state) => {
-                            slack_low_state = state;
+                        Ok(()) => {
                             slack_high_state.reset();
                         }
                         Err(e) => {
@@ -163,10 +162,9 @@ fn main() -> process::ExitCode {
                         now,
                         &settings,
                         message,
-                        &batsign_low_state,
+                        &mut batsign_low_state,
                     ) {
-                        Ok(state) => {
-                            batsign_low_state = state;
+                        Ok(()) => {
                             batsign_high_state.reset();
                         }
                         Err(e) => {
@@ -213,10 +211,9 @@ fn main() -> process::ExitCode {
                         &settings,
                         slack::SLACK_ERROR_EMOJI,
                         message,
-                        &slack_high_state,
+                        &mut slack_high_state,
                     ) {
-                        Ok(state) => {
-                            slack_high_state = state;
+                        Ok(()) => {
                             slack_low_state.reset();
                         }
                         Err(e) => {
@@ -237,10 +234,9 @@ fn main() -> process::ExitCode {
                         now,
                         &settings,
                         message,
-                        &batsign_high_state,
+                        &mut batsign_high_state,
                     ) {
-                        Ok(state) => {
-                            batsign_high_state = state;
+                        Ok(()) => {
                             batsign_low_state.reset();
                         }
                         Err(e) => {
