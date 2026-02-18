@@ -16,9 +16,6 @@ pub mod gpio {
 pub mod slack {
     use std::time::Duration;
 
-    /// Placeholder Slack webhook URL, used in the default configuration and as a hint for users.
-    pub const DUMMY_WEBHOOK_URL: &str = "https://hooks.slack.com/services/your/webhook/url";
-
     /// Resource file name for the Slack alarm message template.
     pub const ALARM_MESSAGE_TEMPLATE_FILENAME: &str = "slack_alarm_message_template.txt";
 
@@ -41,9 +38,6 @@ pub mod slack {
 
 pub mod batsign {
     use std::time::Duration;
-
-    /// Resource file name for the Batsign URLs.
-    pub const URLS_FILENAME: &str = "batsigns.url";
 
     /// Resource file name for the alarm message template.
     pub const ALARM_MESSAGE_TEMPLATE_FILENAME: &str = "batsign_alarm_message_template.txt";

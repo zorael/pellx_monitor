@@ -18,6 +18,7 @@ pub fn send_batsign_notification_impl(
             "Dry run: would otherwise have sent Batsign notification to {} URLs:",
             urls.len()
         );
+
         println!("\n{}\n", message);
         return Ok(statuses);
     }

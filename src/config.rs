@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::{env, fs, io, time};
+use std::{env, time};
 
 use crate::defaults;
 use crate::settings::Settings;
@@ -32,8 +32,11 @@ impl Default for GpioSettings {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SlackSettings {
+    /// Whether Slack notifications are enabled.
+    pub enabled: bool,
+
     /// Optional Slack webhook URL for sending notifications to Slack.
-    pub webhook_url: Option<String>,
+    pub urls: Vec<String>,
 
     /// Minimum time between sending Slack notifications.
     #[serde(with = "humantime_serde")]
@@ -48,7 +51,8 @@ impl Default for SlackSettings {
     /// Default values for the Slack settings.
     fn default() -> Self {
         Self {
-            webhook_url: Some(defaults::slack::DUMMY_WEBHOOK_URL.to_string()),
+            enabled: true,
+            urls: Vec::new(),
             notification_interval: Some(defaults::slack::NOTIFICATION_INTERVAL),
             retry_interval: Some(defaults::slack::RETRY_INTERVAL),
         }
@@ -57,6 +61,12 @@ impl Default for SlackSettings {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct BatsignSettings {
+    /// Whether Batsign notifications are enabled.
+    pub enabled: bool,
+
+    /// List of URLs to send Batsign notifications to.
+    pub urls: Vec<String>,
+
     /// Minimum time between sending Batsign notifications.
     #[serde(with = "humantime_serde")]
     pub notification_interval: Option<time::Duration>,
@@ -70,6 +80,8 @@ impl Default for BatsignSettings {
     /// Default values for the Batsign settings.
     fn default() -> Self {
         Self {
+            enabled: true,
+            urls: Vec::new(),
             notification_interval: Some(defaults::batsign::NOTIFICATION_INTERVAL),
             retry_interval: Some(defaults::batsign::RETRY_INTERVAL),
         }
@@ -110,12 +122,17 @@ impl From<&Settings> for FileConfig {
                 poll_interval: s.gpio.poll_interval,
                 hold: s.gpio.hold,
             },
+
             slack: SlackSettings {
-                webhook_url: Some(s.slack.webhook_url.clone()),
+                enabled: s.slack.enabled,
+                urls: s.slack.urls.clone(),
                 notification_interval: Some(s.slack.notification_interval),
                 retry_interval: Some(s.slack.retry_interval),
             },
+
             batsign: BatsignSettings {
+                enabled: s.batsign.enabled,
+                urls: s.batsign.urls.clone(),
                 notification_interval: Some(s.batsign.notification_interval),
                 retry_interval: Some(s.batsign.retry_interval),
             },
@@ -128,6 +145,10 @@ pub fn deserialize_config_file(
     settings: &Settings,
 ) -> Result<Option<FileConfig>, confy::ConfyError> {
     let config_pathbuf = settings.paths.resource_dir.join(defaults::CONFIG_FILENAME);
+
+    if !config_pathbuf.exists() {
+        return Ok(None);
+    }
 
     match confy::load_path(config_pathbuf) {
         Ok(cfg) => Ok(Some(cfg)),
@@ -149,6 +170,7 @@ pub fn resolve_default_resource_directory() -> PathBuf {
     base.join(defaults::PROGRAM_ARG0)
 }
 
+/*
 /// Reads a text file and returns its non-empty, non-comment lines as a vector of strings.
 pub fn read_file_lines_into_vec(pathbuf: &PathBuf) -> io::Result<Vec<String>> {
     let s = fs::read_to_string(pathbuf)?;
@@ -159,3 +181,5 @@ pub fn read_file_lines_into_vec(pathbuf: &PathBuf) -> io::Result<Vec<String>> {
         .collect();
     Ok(v)
 }
+*/
+

@@ -18,7 +18,7 @@ use crate::notifications::NotificationState;
 fn main() -> process::ExitCode {
     if !cfg!(target_os = "linux") {
         eprintln!("[!] This program can only be run on Linux.");
-        return process::ExitCode::FAILURE;
+        return process::ExitCode::from(100);
     }
 
     print_banner();
@@ -47,7 +47,7 @@ fn main() -> process::ExitCode {
             eprintln!("  * {error}");
         }
 
-        return process::ExitCode::FAILURE;
+        return process::ExitCode::from(20);
     }
 
     if settings.debug {
@@ -62,7 +62,7 @@ fn main() -> process::ExitCode {
         Ok(g) => g,
         Err(e) => {
             eprintln!("[!] Failed to initialize GPIO: {e}");
-            return process::ExitCode::FAILURE;
+            return process::ExitCode::from(30);
         }
     };
 
@@ -73,15 +73,17 @@ fn main() -> process::ExitCode {
                 "[!] Failed to set mode of GPIO{}: {e}",
                 settings.gpio.pin_number
             );
-            return process::ExitCode::FAILURE;
+            return process::ExitCode::from(31);
         }
     };
 
     let client = Client::new();
 
-    let slack_is_correctly_configured = !settings.slack.webhook_url.is_empty()
-        && settings.slack.webhook_url != defaults::slack::DUMMY_WEBHOOK_URL;
-    let batsign_is_correctly_configured = !settings.batsign.urls.is_empty();
+    let slack_is_correctly_configured =
+        settings.dry_run || (settings.slack.enabled && !settings.slack.urls.is_empty());
+
+    let batsign_is_correctly_configured =
+        settings.dry_run || (settings.batsign.enabled && !settings.batsign.urls.is_empty());
 
     let mut slack_low_state = NotificationState::new(None, settings.slack.retry_interval);
     let mut slack_high_state = NotificationState::new(
@@ -262,7 +264,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
             "[!] Resource directory `{}` does not exist. Create it or run with `--save` to generate default configuration and resources.",
             settings.paths.resource_dir.display()
         );
-        return Err(process::ExitCode::FAILURE);
+        return Err(process::ExitCode::from(40));
     }
 
     settings.resolve_resource_paths();
@@ -275,7 +277,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         }
 
         if !resource_load_results.is_empty() {
-            return Err(process::ExitCode::FAILURE);
+            return Err(process::ExitCode::from(41));
         }
     }
 
@@ -286,9 +288,17 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
                 "[!] Failed to read configuration file `{}`: {e}",
                 settings.paths.config_file.display()
             );
-            return Err(process::ExitCode::FAILURE);
+            return Err(process::ExitCode::from(42));
         }
     };
+
+    if config.is_none() && !cli.save {
+        eprintln!(
+            "[!] No configuration file found at `{}`. Create it or run with `--save` to generate default configuration and resources.",
+            settings.paths.config_file.display()
+        );
+        return Err(process::ExitCode::from(43));
+    }
 
     settings = settings::apply_file(settings, &config);
     settings = settings::apply_cli(settings, cli);
@@ -307,7 +317,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
                         "[!] Failed to create resource directory `{}`: {e}",
                         settings.paths.resource_dir.display()
                     );
-                    return Err(process::ExitCode::FAILURE);
+                    return Err(process::ExitCode::from(10));
                 }
             };
         }
@@ -316,7 +326,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
 
         if confy::store_path(&settings.paths.config_file, config).is_err() {
             eprintln!("[!] Failed to write configuration file.");
-            return Err(process::ExitCode::FAILURE);
+            return Err(process::ExitCode::from(11));
         };
 
         if fs::write(
@@ -326,7 +336,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         .is_err()
         {
             eprintln!("[!] Failed to write Slack alarm template file.");
-            return Err(process::ExitCode::FAILURE);
+            return Err(process::ExitCode::from(12));
         }
 
         if fs::write(
@@ -336,17 +346,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         .is_err()
         {
             eprintln!("[!] Failed to write Slack restored template file.");
-            return Err(process::ExitCode::FAILURE);
-        }
-
-        if fs::write(
-            settings.paths.batsign_urls,
-            settings.batsign.urls.join("\n"),
-        )
-        .is_err()
-        {
-            eprintln!("[!] Failed to write Batsigns URL file.");
-            return Err(process::ExitCode::FAILURE);
+            return Err(process::ExitCode::from(13));
         }
 
         if fs::write(
@@ -356,7 +356,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         .is_err()
         {
             eprintln!("[!] Failed to write Batsign alarm template file.");
-            return Err(process::ExitCode::FAILURE);
+            return Err(process::ExitCode::from(14));
         }
 
         if fs::write(
@@ -366,7 +366,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         .is_err()
         {
             eprintln!("[!] Failed to write Batsign restored template file.");
-            return Err(process::ExitCode::FAILURE);
+            return Err(process::ExitCode::from(15));
         }
 
         println!(

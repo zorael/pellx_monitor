@@ -10,24 +10,33 @@ pub const SLACK_SUCCESS_EMOJI: &str = ":white_check_mark:";
 /// Sends a Slack notification.
 fn send_slack_notification_impl(
     client: &Client,
-    slack_webhook_url: &str,
+    urls: &[String],
     message: &str,
     emoji: &str,
     dry_run: bool,
-) -> Result<(), reqwest::Error> {
+) -> Result<Vec<reqwest::StatusCode>, reqwest::Error> {
+    let mut statuses = Vec::new();
+
     let payload = serde_json::json!({
         "text": format!("{} {}", emoji, message)
     });
 
     if dry_run {
-        println!("Dry run: would otherwise have sent Slack notification");
+        println!(
+            "Dry run: would otherwise have sent Slack notification to {} URLs:",
+            urls.len()
+        );
+
         println!("\n{}\n", payload);
-        return Ok(());
+        return Ok(statuses);
     }
 
-    client.post(slack_webhook_url).json(&payload).send()?;
+    for url in urls {
+        let res = client.post(url).json(&payload).send()?;
+        statuses.push(res.status());
+    }
 
-    Ok(())
+    Ok(statuses)
 }
 
 /// Sends a Slack notification if it should. Returns the updated notification state.
@@ -41,22 +50,38 @@ pub fn send_slack_notification(
 ) -> Result<(), reqwest::Error> {
     state.reset();
 
-    match send_slack_notification_impl(
+    let statuses = match send_slack_notification_impl(
         client,
-        &settings.slack.webhook_url,
+        &settings.slack.urls,
         message,
         emoji,
         settings.dry_run,
     ) {
-        Ok(()) => {
-            println!("Sent Slack notification");
-            state.previous = Some(now);
-            Ok(())
-        }
+        Ok(statuses) => statuses,
         Err(e) => {
-            eprintln!("[!] Could not send Slack notification: {e}");
+            eprintln!("[!] Could not reach Slack: {e}");
             state.previous_failure = Some(now);
-            Err(e)
+            return Err(e);
+        }
+    };
+
+    if !statuses.is_empty() {
+        println!("Slack notifications sent; HTTP statuses: {:?}", statuses);
+    }
+
+    let mut num_errors: u8 = 0;
+
+    for status in statuses {
+        if !status.is_success() {
+            num_errors += 1;
         }
     }
+
+    if num_errors == 0 {
+        state.previous = Some(now);
+    } else {
+        state.previous_failure = Some(now);
+    }
+
+    Ok(())
 }
