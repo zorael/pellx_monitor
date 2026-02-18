@@ -55,7 +55,9 @@ pub fn send_batsign_notification(
         }
     };
 
-    println!("Batsigns sent; HTTP statuses: {:?}", statuses);
+    if !statuses.is_empty() {
+        println!("Batsigns sent; HTTP statuses: {:?}", statuses);
+    }
 
     let mut num_errors: u8 = 0;
 
