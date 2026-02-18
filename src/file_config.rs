@@ -6,7 +6,7 @@ use crate::defaults;
 use crate::settings::Settings;
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct GpioSettings {
+pub struct GpioConfig {
     /// GPIO pin number to monitor.
     pub pin_number: u8,
 
@@ -19,7 +19,7 @@ pub struct GpioSettings {
     pub hold: time::Duration,
 }
 
-impl Default for GpioSettings {
+impl Default for GpioConfig {
     /// Default values for the GPIO settings.
     fn default() -> Self {
         Self {
@@ -31,7 +31,7 @@ impl Default for GpioSettings {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct SlackSettings {
+pub struct SlackConfig {
     /// Whether Slack notifications are enabled.
     pub enabled: bool,
 
@@ -47,7 +47,7 @@ pub struct SlackSettings {
     pub retry_interval: Option<time::Duration>,
 }
 
-impl Default for SlackSettings {
+impl Default for SlackConfig {
     /// Default values for the Slack settings.
     fn default() -> Self {
         Self {
@@ -60,7 +60,7 @@ impl Default for SlackSettings {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct BatsignSettings {
+pub struct BatsignConfig {
     /// Whether Batsign notifications are enabled.
     pub enabled: bool,
 
@@ -76,7 +76,7 @@ pub struct BatsignSettings {
     pub retry_interval: Option<time::Duration>,
 }
 
-impl Default for BatsignSettings {
+impl Default for BatsignConfig {
     /// Default values for the Batsign settings.
     fn default() -> Self {
         Self {
@@ -93,22 +93,22 @@ impl Default for BatsignSettings {
 #[serde(default)]
 pub struct FileConfig {
     /// GPIO settings loaded from the configuration file.
-    pub gpio: GpioSettings,
+    pub gpio: GpioConfig,
 
     /// Slack settings loaded from the configuration file.
-    pub slack: SlackSettings,
+    pub slack: SlackConfig,
 
     /// Batsign settings loaded from the configuration file.
-    pub batsign: BatsignSettings,
+    pub batsign: BatsignConfig,
 }
 
 impl Default for FileConfig {
     /// Default values for the configuration file.
     fn default() -> Self {
         Self {
-            gpio: GpioSettings::default(),
-            slack: SlackSettings::default(),
-            batsign: BatsignSettings::default(),
+            gpio: GpioConfig::default(),
+            slack: SlackConfig::default(),
+            batsign: BatsignConfig::default(),
         }
     }
 }
@@ -117,20 +117,20 @@ impl From<&Settings> for FileConfig {
     /// Converts the resolved settings into a FileConfig, which can be saved to disk. This is used when the user wants to save the current configuration.
     fn from(s: &Settings) -> Self {
         Self {
-            gpio: GpioSettings {
+            gpio: GpioConfig {
                 pin_number: s.gpio.pin_number,
                 poll_interval: s.gpio.poll_interval,
                 hold: s.gpio.hold,
             },
 
-            slack: SlackSettings {
+            slack: SlackConfig {
                 enabled: s.slack.enabled,
                 urls: s.slack.urls.clone(),
                 notification_interval: Some(s.slack.notification_interval),
                 retry_interval: Some(s.slack.retry_interval),
             },
 
-            batsign: BatsignSettings {
+            batsign: BatsignConfig {
                 enabled: s.batsign.enabled,
                 urls: s.batsign.urls.clone(),
                 notification_interval: Some(s.batsign.notification_interval),

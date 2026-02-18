@@ -1,7 +1,7 @@
 mod batsign;
 mod cli;
-mod config;
 mod defaults;
+mod file_config;
 mod notifications;
 mod settings;
 mod slack;
@@ -281,7 +281,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         }
     }
 
-    let config = match config::deserialize_config_file(&settings) {
+    let config = match file_config::deserialize_config_file(&settings) {
         Ok(cfg) => cfg,
         Err(e) => {
             eprintln!(
@@ -322,7 +322,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
             };
         }
 
-        let config = config::FileConfig::from(&settings);
+        let config = file_config::FileConfig::from(&settings);
 
         if confy::store_path(&settings.paths.config_file, config).is_err() {
             eprintln!("[!] Failed to write configuration file.");

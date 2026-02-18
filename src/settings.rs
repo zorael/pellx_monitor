@@ -4,8 +4,8 @@ use std::time::Duration;
 use std::{fs, io};
 
 use crate::cli::Cli;
-use crate::config; //::{FileConfig, read_resource_file};
 use crate::defaults;
+use crate::file_config;
 
 #[derive(Debug, Serialize)]
 pub struct GpioSettings {
@@ -221,7 +221,7 @@ impl Settings {
     pub fn with_resource_dir(mut self, resource_dir: &Option<String>) -> Self {
         match resource_dir {
             Some(dir) => self.paths.resource_dir = PathBuf::from(dir),
-            None => self.paths.resource_dir = config::resolve_default_resource_directory(),
+            None => self.paths.resource_dir = file_config::resolve_default_resource_directory(),
         }
 
         self
@@ -353,7 +353,7 @@ impl Settings {
 }
 
 /// Applies config file settings to the default settings, returning the resulting settings.
-pub fn apply_file(mut s: Settings, file: &Option<config::FileConfig>) -> Settings {
+pub fn apply_file(mut s: Settings, file: &Option<file_config::FileConfig>) -> Settings {
     let Some(file) = file else {
         return s;
     };
