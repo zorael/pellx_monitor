@@ -21,6 +21,9 @@ fn main() -> process::ExitCode {
         return process::ExitCode::FAILURE;
     }
 
+    print_banner();
+    println!();
+
     let cli = cli::Cli::parse();
     let settings = match init_settings(&cli) {
         Ok(s) => s,
@@ -46,9 +49,6 @@ fn main() -> process::ExitCode {
 
         return process::ExitCode::FAILURE;
     }
-
-    print_banner();
-    println!();
 
     if settings.debug {
         println!("{:#?}", &settings);
