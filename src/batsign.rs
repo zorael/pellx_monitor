@@ -7,7 +7,7 @@ use crate::settings::Settings;
 /// Sends a batsign message to the specified URL, returning the HTTP status code or an error.
 pub fn send_batsign_notification_impl(
     client: &Client,
-    urls: &Vec<String>,
+    urls: &[String],
     message: &str,
     dry_run: bool,
 ) -> Result<Vec<reqwest::StatusCode>, reqwest::Error> {
