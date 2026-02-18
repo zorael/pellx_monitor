@@ -169,17 +169,3 @@ pub fn resolve_default_resource_directory() -> PathBuf {
 
     base.join(defaults::PROGRAM_ARG0)
 }
-
-/*
-/// Reads a text file and returns its non-empty, non-comment lines as a vector of strings.
-pub fn read_file_lines_into_vec(pathbuf: &PathBuf) -> io::Result<Vec<String>> {
-    let s = fs::read_to_string(pathbuf)?;
-    let v = s
-        .split('\n')
-        .map(|l| l.trim().to_string())
-        .filter(|l| !l.is_empty() && !l.starts_with('#'))
-        .collect();
-    Ok(v)
-}
-*/
-
