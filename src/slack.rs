@@ -1,7 +1,6 @@
 use reqwest::blocking::Client;
 use std::time::Instant;
 
-use crate::defaults;
 use crate::notifications::NotificationState;
 use crate::settings::Settings;
 
@@ -26,10 +25,7 @@ fn send_slack_notification_impl(
         return Ok(());
     }
 
-    client
-        .post(slack_webhook_url)
-        .body(payload.to_string())
-        .send()?;
+    client.post(slack_webhook_url).json(&payload).send()?;
 
     Ok(())
 }
