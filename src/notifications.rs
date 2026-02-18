@@ -47,10 +47,7 @@ pub fn format_notification_message(template: &str, settings: &Settings, since: &
 }
 
 /// Determines whether a notification should be sent based on the current time, settings, and notification state.
-pub fn should_send_notification(
-    now: Instant,
-    state: &NotificationState,
-) -> bool {
+pub fn should_send_notification(now: Instant, state: &NotificationState) -> bool {
     if let Some(then) = state.previous_failure
         && now.duration_since(then) < state.retry_delay
     {
@@ -60,8 +57,6 @@ pub fn should_send_notification(
     match (state.previous, state.repeat_interval) {
         (None, _) => true,
         (Some(_), None) => false,
-        (Some(then), Some(repeat_interval)) => {
-            now.duration_since(then) >= repeat_interval
-        }
+        (Some(then), Some(repeat_interval)) => now.duration_since(then) >= repeat_interval,
     }
 }
