@@ -264,21 +264,13 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
             Ok(()) => {
                 println!(
                     "Resource directory `{}` created.",
-                    settings
-                        .paths
-                        .resource_dir
-                        .to_str()
-                        .expect("resource_dir path should be valid UTF-8")
+                    settings.paths.resource_dir.display()
                 );
             }
             Err(e) => {
                 eprintln!(
                     "[!] Failed to create resource directory `{}`: {e}",
-                    settings
-                        .paths
-                        .resource_dir
-                        .to_str()
-                        .expect("resource_dir path should be valid UTF-8")
+                    settings.paths.resource_dir.display()
                 );
                 return Err(process::ExitCode::FAILURE);
             }
@@ -301,11 +293,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         Err(e) => {
             eprintln!(
                 "[!] Failed to read configuration file `{}`: {e}",
-                settings
-                    .paths
-                    .config_file
-                    .to_str()
-                    .expect("config_file path should be valid UTF-8")
+                settings.paths.config_file.display()
             );
             return Err(process::ExitCode::FAILURE);
         }
@@ -374,11 +362,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
 
         println!(
             "Configuration and resources written successfully to `{}`.",
-            settings
-                .paths
-                .resource_dir
-                .to_str()
-                .expect("resource_dir path should be valid UTF-8")
+            settings.paths.resource_dir.display()
         );
         return Err(process::ExitCode::SUCCESS);
     }
