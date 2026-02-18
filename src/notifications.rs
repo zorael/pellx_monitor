@@ -22,10 +22,9 @@ impl NotificationState {
     }
 
     /// Resets the notification state by clearing the previous success and failure timestamps.
-    pub fn reset(&mut self) -> Self {
+    pub fn reset(&mut self) {
         self.previous = None;
         self.previous_failure = None;
-        self.clone()
     }
 }
 

@@ -43,7 +43,8 @@ pub fn send_slack_notification(
     message: &str,
     state: &NotificationState,
 ) -> Result<NotificationState, reqwest::Error> {
-    let mut state = state.clone().reset();
+    let mut state = state.clone();
+    state.reset();
 
     match &settings.slack.webhook_url {
         url if url.is_empty() => {}

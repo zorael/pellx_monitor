@@ -38,7 +38,8 @@ pub fn send_batsign_notification(
     message: &str,
     state: &NotificationState,
 ) -> Result<NotificationState, reqwest::Error> {
-    let mut state = state.clone().reset();
+    let mut state = state.clone();
+    state.reset();
 
     let statuses = match send_batsign_notification_impl(
         client,
