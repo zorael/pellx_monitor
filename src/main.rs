@@ -259,31 +259,24 @@ fn main() -> process::ExitCode {
 fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode> {
     let mut settings = settings::Settings::default().with_resource_dir(&cli.resource_dir);
 
-    if !settings.paths.resource_dir.exists() {
-        match fs::create_dir_all(&settings.paths.resource_dir) {
-            Ok(()) => {
-                println!(
-                    "Resource directory `{}` created.",
-                    settings.paths.resource_dir.display()
-                );
-            }
-            Err(e) => {
-                eprintln!(
-                    "[!] Failed to create resource directory `{}`: {e}",
-                    settings.paths.resource_dir.display()
-                );
-                return Err(process::ExitCode::FAILURE);
-            }
-        };
+    if !settings.paths.resource_dir.exists() && !cli.save {
+        eprintln!(
+            "[!] Resource directory `{}` does not exist. Create it or run with `--save` to generate default configuration and resources.",
+            settings.paths.resource_dir.display()
+        );
+        return Err(process::ExitCode::FAILURE);
     }
 
     settings.resolve_resource_paths();
 
-    match settings.load_resources_from_disk() {
-        Ok(()) => {}
-        Err(_) if cli.save => {}
-        Err(e) => {
-            eprintln!("[!] Failed to load resource files: {e}");
+    let resource_load_results = settings.load_resources_from_disk();
+
+    if !cli.save {
+        for (pathbuf, e) in &resource_load_results {
+            eprintln!("[!] Failed to load resource `{}`: {e}", pathbuf.display());
+        }
+
+        if !resource_load_results.is_empty() {
             return Err(process::ExitCode::FAILURE);
         }
     }
@@ -303,6 +296,24 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
     settings = settings::apply_cli(settings, cli);
 
     if cli.save {
+        if !settings.paths.resource_dir.exists() {
+            match fs::create_dir_all(&settings.paths.resource_dir) {
+                Ok(()) => {
+                    println!(
+                        "Resource directory `{}` created.",
+                        settings.paths.resource_dir.display()
+                    );
+                }
+                Err(e) => {
+                    eprintln!(
+                        "[!] Failed to create resource directory `{}`: {e}",
+                        settings.paths.resource_dir.display()
+                    );
+                    return Err(process::ExitCode::FAILURE);
+                }
+            };
+        }
+
         let config = config::FileConfig::from(&settings);
 
         if confy::store_path(&settings.paths.config_file, config).is_err() {
