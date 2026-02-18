@@ -79,6 +79,10 @@ fn main() -> process::ExitCode {
 
     let client = Client::new();
 
+    let slack_is_correctly_configured = !settings.slack.webhook_url.is_empty()
+        && settings.slack.webhook_url != defaults::slack::DUMMY_WEBHOOK_URL;
+    let batsign_is_correctly_configured = !settings.batsign.urls.is_empty();
+
     let mut slack_low_state = NotificationState::new(None, settings.slack.retry_interval);
     let mut slack_high_state = NotificationState::new(
         Some(settings.slack.notification_interval),
@@ -116,11 +120,10 @@ fn main() -> process::ExitCode {
                     low_since.expect("low_since should have been set with .get_or_insert_with");
                 high_since = None;
 
-                let should_send_slack_notification = !settings.slack.webhook_url.is_empty()
-                    && settings.slack.webhook_url != defaults::slack::DUMMY_WEBHOOK_URL
+                let should_send_slack_notification = slack_is_correctly_configured
                     && notifications::should_send_notification(now, &slack_low_state);
 
-                let should_send_batsign_notification = !settings.batsign.urls.is_empty()
+                let should_send_batsign_notification = batsign_is_correctly_configured
                     && notifications::should_send_notification(now, &batsign_low_state);
 
                 if should_send_slack_notification {
@@ -191,11 +194,10 @@ fn main() -> process::ExitCode {
                     high_since.expect("high_since should have been set with .get_or_insert_with");
                 low_since = None;
 
-                let should_send_slack_notification = !settings.slack.webhook_url.is_empty()
-                    && settings.slack.webhook_url != defaults::slack::DUMMY_WEBHOOK_URL
+                let should_send_slack_notification = slack_is_correctly_configured
                     && notifications::should_send_notification(now, &slack_high_state);
 
-                let should_send_batsign_notification = !settings.batsign.urls.is_empty()
+                let should_send_batsign_notification = batsign_is_correctly_configured
                     && notifications::should_send_notification(now, &batsign_high_state);
 
                 if should_send_slack_notification {

@@ -46,19 +46,22 @@ pub fn send_slack_notification(
     let mut state = state.clone();
     state.reset();
 
-    match &settings.slack.webhook_url {
-        url if url.is_empty() => {}
-        url if url == defaults::slack::DUMMY_WEBHOOK_URL => {}
-        url => match send_slack_notification_impl(client, url, message, emoji, settings.dry_run) {
-            Ok(()) => {
-                println!("Sent Slack notification");
-                state.previous = Some(now);
-            }
-            Err(e) => {
-                state.previous_failure = Some(now);
-                return Err(e);
-            }
-        },
+    match send_slack_notification_impl(
+        client,
+        &settings.slack.webhook_url,
+        message,
+        emoji,
+        settings.dry_run,
+    ) {
+        Ok(()) => {
+            println!("Sent Slack notification");
+            state.previous = Some(now);
+        }
+        Err(e) => {
+            eprintln!("[!] Could not send Slack notification: {e}");
+            state.previous_failure = Some(now);
+            return Err(e);
+        }
     }
 
     Ok(state)
