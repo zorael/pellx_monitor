@@ -260,7 +260,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
     let mut settings = settings::Settings::default().with_resource_dir(&cli.resource_dir);
 
     if !settings.paths.resource_dir.exists() {
-        match fs::create_dir(&settings.paths.resource_dir) {
+        match fs::create_dir_all(&settings.paths.resource_dir) {
             Ok(()) => {
                 println!(
                     "Resource directory `{}` created.",
