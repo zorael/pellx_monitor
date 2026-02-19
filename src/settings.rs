@@ -358,12 +358,27 @@ pub fn apply_file(mut s: Settings, file: &Option<file_config::FileConfig>) -> Se
         return s;
     };
 
-    s.gpio.pin_number = file.gpio.pin_number;
-    s.gpio.poll_interval = file.gpio.poll_interval;
-    s.gpio.hold = file.gpio.hold;
+    // FileConfig
+    if let Some(pin_number) = file.gpio.pin_number {
+        s.gpio.pin_number = pin_number;
+    }
 
-    s.slack.urls = file.slack.urls.clone();
-    s.batsign.urls = file.batsign.urls.clone();
+    if let Some(poll_interval) = file.gpio.poll_interval {
+        s.gpio.poll_interval = poll_interval;
+    }
+
+    if let Some(hold) = file.gpio.hold {
+        s.gpio.hold = hold;
+    }
+
+    // SlackConfig
+    if let Some(enabled) = file.slack.enabled {
+        s.slack.enabled = enabled;
+    }
+
+    if let Some(urls) = file.slack.urls.clone() {
+        s.slack.urls = urls;
+    }
 
     if let Some(slack_notification_interval) = file.slack.notification_interval {
         s.slack.notification_interval = slack_notification_interval;
@@ -371,6 +386,15 @@ pub fn apply_file(mut s: Settings, file: &Option<file_config::FileConfig>) -> Se
 
     if let Some(slack_retry_interval) = file.slack.retry_interval {
         s.slack.retry_interval = slack_retry_interval;
+    }
+
+    // BatsignConfig
+    if let Some(enabled) = file.batsign.enabled {
+        s.batsign.enabled = enabled;
+    }
+
+    if let Some(urls) = file.batsign.urls.clone() {
+        s.batsign.urls = urls;
     }
 
     if let Some(batsign_notification_interval) = file.batsign.notification_interval {

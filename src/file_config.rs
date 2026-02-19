@@ -8,24 +8,24 @@ use crate::settings::Settings;
 #[derive(Clone, Serialize, Deserialize)]
 pub struct GpioConfig {
     /// GPIO pin number to monitor.
-    pub pin_number: u8,
+    pub pin_number: Option<u8>,
 
     /// Poll interval for checking the GPIO pin.
     #[serde(with = "humantime_serde")]
-    pub poll_interval: time::Duration,
+    pub poll_interval: Option<time::Duration>,
 
     /// Duration the pin must be HIGH or LOW before qualifying as a valid change.
     #[serde(with = "humantime_serde")]
-    pub hold: time::Duration,
+    pub hold: Option<time::Duration>,
 }
 
 impl Default for GpioConfig {
     /// Default values for the GPIO settings.
     fn default() -> Self {
         Self {
-            pin_number: defaults::gpio::PIN_NUMBER,
-            poll_interval: defaults::gpio::POLL_INTERVAL,
-            hold: defaults::gpio::HOLD,
+            pin_number: None,
+            poll_interval: None,
+            hold: None,
         }
     }
 }
@@ -33,10 +33,10 @@ impl Default for GpioConfig {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SlackConfig {
     /// Whether Slack notifications are enabled.
-    pub enabled: bool,
+    pub enabled: Option<bool>,
 
     /// Optional Slack webhook URL for sending notifications to Slack.
-    pub urls: Vec<String>,
+    pub urls: Option<Vec<String>>,
 
     /// Minimum time between sending Slack notifications.
     #[serde(with = "humantime_serde")]
@@ -51,10 +51,10 @@ impl Default for SlackConfig {
     /// Default values for the Slack settings.
     fn default() -> Self {
         Self {
-            enabled: true,
-            urls: Vec::new(),
-            notification_interval: Some(defaults::slack::NOTIFICATION_INTERVAL),
-            retry_interval: Some(defaults::slack::RETRY_INTERVAL),
+            enabled: None,
+            urls: None,
+            notification_interval: None,
+            retry_interval: None,
         }
     }
 }
@@ -62,10 +62,10 @@ impl Default for SlackConfig {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct BatsignConfig {
     /// Whether Batsign notifications are enabled.
-    pub enabled: bool,
+    pub enabled: Option<bool>,
 
     /// List of URLs to send Batsign notifications to.
-    pub urls: Vec<String>,
+    pub urls: Option<Vec<String>>,
 
     /// Minimum time between sending Batsign notifications.
     #[serde(with = "humantime_serde")]
@@ -80,10 +80,10 @@ impl Default for BatsignConfig {
     /// Default values for the Batsign settings.
     fn default() -> Self {
         Self {
-            enabled: true,
-            urls: Vec::new(),
-            notification_interval: Some(defaults::batsign::NOTIFICATION_INTERVAL),
-            retry_interval: Some(defaults::batsign::RETRY_INTERVAL),
+            enabled: None,
+            urls: None,
+            notification_interval: None,
+            retry_interval: None,
         }
     }
 }
@@ -118,21 +118,21 @@ impl From<&Settings> for FileConfig {
     fn from(s: &Settings) -> Self {
         Self {
             gpio: GpioConfig {
-                pin_number: s.gpio.pin_number,
-                poll_interval: s.gpio.poll_interval,
-                hold: s.gpio.hold,
+                pin_number: Some(s.gpio.pin_number),
+                poll_interval: Some(s.gpio.poll_interval),
+                hold: Some(s.gpio.hold),
             },
 
             slack: SlackConfig {
-                enabled: s.slack.enabled,
-                urls: s.slack.urls.clone(),
+                enabled: Some(s.slack.enabled),
+                urls: Some(s.slack.urls.clone()),
                 notification_interval: Some(s.slack.notification_interval),
                 retry_interval: Some(s.slack.retry_interval),
             },
 
             batsign: BatsignConfig {
-                enabled: s.batsign.enabled,
-                urls: s.batsign.urls.clone(),
+                enabled: Some(s.batsign.enabled),
+                urls: Some(s.batsign.urls.clone()),
                 notification_interval: Some(s.batsign.notification_interval),
                 retry_interval: Some(s.batsign.retry_interval),
             },
