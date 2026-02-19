@@ -257,14 +257,18 @@ fn main() -> process::ExitCode {
 
 /// Initializes the settings by loading defaults, applying the config file, and then applying CLI overrides. If the `--save` flag is set, it saves the resolved configuration back to disk and exits.
 fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode> {
-    let mut settings = settings::Settings::default().with_resource_dir(&cli.resource_dir);
+    let mut settings = settings::Settings::default();
+    if let Err(e) = settings.inherit_resource_dir(&cli.resource_dir) {
+        eprintln!("[!] Error resolving default resource directory: {}", e);
+        return Err(process::ExitCode::from(40));
+    }
 
     if !settings.paths.resource_dir.exists() && !cli.save {
         eprintln!(
             "[!] Resource directory `{}` does not exist. Create it or run with `--save` to generate default configuration and resources.",
             settings.paths.resource_dir.display()
         );
-        return Err(process::ExitCode::from(40));
+        return Err(process::ExitCode::from(41));
     }
 
     settings.resolve_resource_paths();
@@ -277,7 +281,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         }
 
         if !resource_load_results.is_empty() {
-            return Err(process::ExitCode::from(41));
+            return Err(process::ExitCode::from(42));
         }
     }
 
@@ -288,7 +292,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
                 "[!] Failed to read configuration file `{}`: {e}",
                 settings.paths.config_file.display()
             );
-            return Err(process::ExitCode::from(42));
+            return Err(process::ExitCode::from(43));
         }
     };
 
@@ -297,7 +301,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
             "[!] No configuration file found at `{}`. Create it or run with `--save` to generate default configuration and resources.",
             settings.paths.config_file.display()
         );
-        return Err(process::ExitCode::from(43));
+        return Err(process::ExitCode::from(44));
     }
 
     settings.apply_file(&config);

@@ -218,13 +218,19 @@ impl Default for Settings {
 
 impl Settings {
     /// Applies the resource directory setting, resolving the resource paths based on the provided directory or the default. This is used to set up the resource paths before loading resources from disk.
-    pub fn with_resource_dir(mut self, resource_dir: &Option<String>) -> Self {
-        match resource_dir {
-            Some(dir) => self.paths.resource_dir = PathBuf::from(dir),
-            None => self.paths.resource_dir = file_config::resolve_default_resource_directory(),
+    pub fn inherit_resource_dir(&mut self, resource_dir: &Option<String>) -> Result<(), String> {
+        if let Some(dir) = resource_dir {
+            self.paths.resource_dir = PathBuf::from(dir);
+            return Ok(());
         }
 
-        self
+        match file_config::resolve_default_resource_directory_from_env() {
+            Ok(path) => {
+                self.paths.resource_dir = path;
+                Ok(())
+            }
+            Err(e) => Err(e),
+        }
     }
 
     /// Sanity check settings, returning a list of errors if any are found.

@@ -157,15 +157,13 @@ pub fn deserialize_config_file(
 }
 
 /// Resolves the configuration directory path, returning the directory as a string and an optional PathBuf. This is used for operations that need to know the config directory, such as saving the config file.
-pub fn resolve_default_resource_directory() -> PathBuf {
-    if let Some(path) = env::var_os("PELLX_MONITOR_RESOURCE_DIR") {
-        return PathBuf::from(path);
+pub fn resolve_default_resource_directory_from_env() -> Result<PathBuf, String> {
+    if let Some(path) = env::var_os("PELLX_MONITOR_RESOURCE_DIR").map(PathBuf::from) {
+        return Ok(path);
     }
 
-    let base = env::var_os("XDG_CONFIG_HOME")
-        .map(PathBuf::from)
-        .or_else(|| env::var_os("HOME").map(|h| PathBuf::from(h).join(".config")))
-        .unwrap_or_else(|| PathBuf::from("."));
-
-    base.join(defaults::PROGRAM_ARG0)
+    match env::var_os("XDG_CONFIG_HOME").map(PathBuf::from) {
+        Some(path) => Ok(path.join(defaults::PROGRAM_ARG0)),
+        None => Err("XDG_CONFIG_HOME not set".to_string()),
+    }
 }

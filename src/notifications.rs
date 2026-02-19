@@ -2,6 +2,7 @@ use std::time::{Duration, Instant};
 
 use crate::settings::Settings;
 
+/// Module for handling notifications, including Slack and Batsign.
 #[derive(Clone)]
 pub struct NotificationState {
     pub previous: Option<Instant>,
