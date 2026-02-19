@@ -73,7 +73,7 @@ pub const CONFIG_FILENAME: &str = "config.toml";
 pub const AUTHOR: &str = "jr <zorael@gmail.com>";
 
 /// Semantic version patch string.
-pub const SEMVER_PATCH: &str = "-alpha.02";
+pub const SEMVER_PATCH: &str = "-alpha.03";
 
 /// Version string, automatically derived from Cargo.toml.
 pub const VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"), SEMVER_PATCH);
