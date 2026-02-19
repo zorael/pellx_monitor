@@ -32,7 +32,7 @@ impl NotificationState {
 pub fn format_notification_message(template: &str, settings: &Settings, since: &Instant) -> String {
     template
         .replace(
-            "{since}",
+            "{elapsed}",
             &humantime::format_duration(since.elapsed()).to_string(),
         )
         .replace("{pin_number}", &settings.gpio.pin_number.to_string())

@@ -24,7 +24,7 @@ pub mod slack {
 
     /// Default Slack alarm message template.
     pub const ALARM_MESSAGE_TEMPLATE_BODY: &str =
-        "Pellets burner has been in an error state for {since}.";
+        "Pellets burner has been in an error state for {elapsed}.";
 
     /// Default Slack restored message template.
     pub const RESTORED_MESSAGE_TEMPLATE_BODY: &str = "Pellets burner has been restored.";
@@ -47,7 +47,7 @@ pub mod batsign {
 
     /// Default alarm message template.
     pub const ALARM_MESSAGE_TEMPLATE_BODY: &str =
-        "Subject: PellX Alarm\nPellets burner has been in an error state for {since}.\n";
+        "Subject: PellX Alarm\nPellets burner has been in an error state for {elapsed}.\n";
 
     /// Default restored message template.
     pub const RESTORED_MESSAGE_TEMPLATE_BODY: &str =
