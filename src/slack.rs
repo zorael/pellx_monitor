@@ -48,7 +48,7 @@ pub fn send_slack_notification(
     message: &str,
     state: &mut NotificationState,
 ) -> Result<(), reqwest::Error> {
-    state.reset();
+    //state.reset();
 
     let statuses = match send_slack_notification_impl(
         client,
@@ -79,6 +79,7 @@ pub fn send_slack_notification(
 
     if num_errors == 0 {
         state.previous = Some(now);
+        state.previous_failure = None;
     } else {
         state.previous_failure = Some(now);
     }
