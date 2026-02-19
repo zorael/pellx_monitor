@@ -270,32 +270,48 @@ impl Settings {
 
     /// Print the settings in a human-readable format.
     pub fn print(&self) {
-        println!("GPIO pin number:              {}", self.gpio.pin_number);
-
         println!(
-            "Poll interval:                {}",
-            humantime::format_duration(self.gpio.poll_interval)
+            "Using resource directory {}",
+            self.paths.resource_dir.display()
         );
 
+        println!();
+        println!("-- GPIO --");
+        println!("Pin number                   {}", self.gpio.pin_number);
         println!(
-            "Hold:                         {}",
+            "Poll interval                {}",
+            humantime::format_duration(self.gpio.poll_interval)
+        );
+        println!(
+            "Hold                         {}",
             humantime::format_duration(self.gpio.hold)
         );
 
+        println!();
+        println!("-- Slack --");
+        println!("Enabled                      {}", self.slack.enabled);
+        println!("Webhook URLs                 {:?}", self.slack.urls);
         println!(
-            "Time between notifications:   {}",
+            "Notification interval        {}",
+            humantime::format_duration(self.slack.notification_interval)
+        );
+
+        println!(
+            "Notification retry interval  {}",
+            humantime::format_duration(self.slack.retry_interval)
+        );
+
+        println!();
+        println!("-- Batsign --");
+        println!("Enabled                      {}", self.batsign.enabled);
+        println!("URLs                         {:?}", self.batsign.urls);
+        println!(
+            "Notification interval        {}",
             humantime::format_duration(self.batsign.notification_interval)
         );
-
         println!(
-            "Notification retry time:      {}",
+            "Notification retry interval  {}",
             humantime::format_duration(self.batsign.retry_interval)
-        );
-
-        println!("Batsign URLs:                 {:?}", self.batsign.urls);
-        println!(
-            "Resource directory:           {:?}",
-            self.paths.resource_dir,
         );
     }
 
