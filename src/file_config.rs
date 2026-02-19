@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::{env, time};
+use users::get_current_uid;
 
 use crate::defaults;
 use crate::settings::Settings;
@@ -162,8 +163,17 @@ pub fn resolve_default_resource_directory_from_env() -> Result<PathBuf, String> 
         return Ok(path);
     }
 
-    match env::var_os("XDG_CONFIG_HOME").map(PathBuf::from) {
-        Some(path) => Ok(path.join(defaults::PROGRAM_ARG0)),
-        None => Err("XDG_CONFIG_HOME not set".to_string()),
+    if get_current_uid() == 0 {
+        return Ok(PathBuf::from("/etc/pellx_monitor"));
     }
+
+    if let Some(path) = env::var_os("XDG_CONFIG_HOME").map(PathBuf::from) {
+        return Ok(path.join(defaults::PROGRAM_ARG0));
+    }
+
+    if let Some(path) = env::var_os("HOME").map(PathBuf::from) {
+        return Ok(path.join(".config").join(defaults::PROGRAM_ARG0));
+    }
+
+    Err("could not resolve default resource directory from environment variables".to_string())
 }
