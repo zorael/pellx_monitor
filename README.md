@@ -1,10 +1,10 @@
 # pellx_monitor
 
-Monitor and error-reporter of a PellX pellets burner.
+Monitor and error-reporter of a **PellX pellets burner**.
 
-Intended to be run on a Raspberry Pi connected via GPIO to terminal 1 and 2 on the controller board of a PellX burner. The connection between said terminals is closed when the machine is running normally and opens when it is in an error state (including power failures).
+Intended to be run on a Raspberry Pi connected via GPIO to terminal 1 and 2 on the controller board of a PellX burner. The electrical connection between said terminals is closed when the machine is running normally and opens when it is in an error state (including power failures). A notification is sent when this is detected.
 
-Notifications can be sent as [Slack messages](https://api.slack.com/apps?new_app=1) (via [webhook URLs](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks)) and/or as short emails via [Batsign](https://batsign.me).
+Notifications can be sent as [**Slack** messages](https://api.slack.com/apps?new_app=1) (via [webhook URLs](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks)) and/or as short emails via [**Batsign**](https://batsign.me).
 
 ## tl;dr
 
@@ -20,6 +20,16 @@ Options:
   -V, --version            Display version information and exit
   -h, --help               Print help
 ```
+
+Use `--save` to create a directory with configuration and resource files. Edit the `config.toml` inside it to get started.
+
+## todo
+
+* external command as notification
+* implement notification methods like `Box<dyn Notifier>`
+* better documentation
+* review all textual output
+* colored terminal output?
 
 ## license
 
