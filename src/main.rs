@@ -25,6 +25,13 @@ fn main() -> process::ExitCode {
     println!();
 
     let cli = cli::Cli::parse();
+
+    if cli.version {
+        // This is the only way to get a neat --version output
+        println!("Licensed under the Boost Software License 1.0.");
+        return process::ExitCode::SUCCESS;
+    }
+
     let settings = match init_settings(&cli) {
         Ok(s) => s,
         Err(code) => return code,

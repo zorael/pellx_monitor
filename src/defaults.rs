@@ -79,4 +79,4 @@ pub const SEMVER_PATCH: &str = "-alpha.04";
 pub const VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"), SEMVER_PATCH);
 
 /// Source repository URL.
-pub const SOURCE_REPOSITORY: &str = "https://github.com/zorael/pellx_monitor";
+pub const SOURCE_REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
