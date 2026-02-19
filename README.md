@@ -23,4 +23,4 @@ Options:
 
 ## license
 
-This project is licensed under the **Boost Software License 1.0** - see the [LICENSE](LICENSE) file for details.
+This project is dual-licensed under the [**MIT License**](LICENSE-MIT) and [**Apache License 2.0**](LICENSE-APACHE).
