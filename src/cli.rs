@@ -7,7 +7,6 @@ use crate::defaults;
 #[command(name = defaults::PROGRAM_NAME)]
 #[command(version = defaults::VERSION)]
 #[command(author = defaults::AUTHOR)]
-#[command(about = defaults::ABOUT)]
 pub struct Cli {
     /// Specify an alternate resource directory
     #[arg(short = 'r', long, value_name = "path to directory")]

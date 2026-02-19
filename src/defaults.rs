@@ -78,10 +78,5 @@ pub const SEMVER_PATCH: &str = "-alpha.03";
 /// Version string, automatically derived from Cargo.toml.
 pub const VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"), SEMVER_PATCH);
 
-/// About string, shown in CLI help.
-pub const ABOUT: &str = concat!(
-    PROGRAM_NAME,
-    " ",
-    VERSION,
-    "\n$ git clone https://github.com/zorael/pellx_monitor"
-);
+/// Source repository URL.
+pub const SOURCE_REPOSITORY: &str = "https://github.com/zorael/pellx_monitor";
