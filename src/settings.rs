@@ -148,8 +148,8 @@ impl BatsignSettings {
 
 #[derive(Debug, Serialize)]
 pub struct PathBufs {
-    /// Path to the resource directory, which contains the configuration file and other resources.
-    pub resource_dir: PathBuf,
+    /// Path to the configuration directory, which contains the configuration file and other resources.
+    pub config_dir: PathBuf,
 
     /// Path to the configuration file, resolved at runtime.
     pub config_file: PathBuf,
@@ -170,7 +170,7 @@ pub struct PathBufs {
 impl Default for PathBufs {
     fn default() -> Self {
         Self {
-            resource_dir: PathBuf::new(),
+            config_dir: PathBuf::new(),
             config_file: PathBuf::new(),
             slack_alarm_template: PathBuf::new(),
             slack_restored_template: PathBuf::new(),
@@ -217,16 +217,16 @@ impl Default for Settings {
 }
 
 impl Settings {
-    /// Applies the resource directory setting, resolving the resource paths based on the provided directory or the default. This is used to set up the resource paths before loading resources from disk.
-    pub fn inherit_resource_dir(&mut self, resource_dir: &Option<String>) -> Result<(), String> {
-        if let Some(dir) = resource_dir {
-            self.paths.resource_dir = PathBuf::from(dir);
+    /// Applies the configuration directory setting, resolving the resource paths based on the provided directory or the default. This is used to set up the resource paths before loading resources from disk.
+    pub fn inherit_config_dir(&mut self, config_dir: &Option<String>) -> Result<(), String> {
+        if let Some(dir) = config_dir {
+            self.paths.config_dir = PathBuf::from(dir);
             return Ok(());
         }
 
-        match file_config::resolve_default_resource_directory_from_env() {
+        match file_config::resolve_default_config_directory_from_env() {
             Ok(path) => {
-                self.paths.resource_dir = path;
+                self.paths.config_dir = path;
                 Ok(())
             }
             Err(e) => Err(e),
@@ -277,8 +277,8 @@ impl Settings {
     /// Print the settings in a human-readable format.
     pub fn print(&self) {
         println!(
-            "Using resource directory {}",
-            self.paths.resource_dir.display()
+            "Using configuration directory {}",
+            self.paths.config_dir.display()
         );
 
         println!();
@@ -321,28 +321,28 @@ impl Settings {
         );
     }
 
-    /// Resolves the resource paths based on the resource directory. This is used to set up the resource paths before loading resources from disk.
+    /// Resolves the resource paths based on the config directory. This is used to set up the resource paths before loading resources from disk.
     pub fn resolve_resource_paths(&mut self) {
-        self.paths.config_file = self.paths.resource_dir.join(defaults::CONFIG_FILENAME);
+        self.paths.config_file = self.paths.config_dir.join(defaults::CONFIG_FILENAME);
 
         self.paths.slack_alarm_template = self
             .paths
-            .resource_dir
+            .config_dir
             .join(defaults::slack::ALARM_MESSAGE_TEMPLATE_FILENAME);
 
         self.paths.slack_restored_template = self
             .paths
-            .resource_dir
+            .config_dir
             .join(defaults::slack::RESTORED_MESSAGE_TEMPLATE_FILENAME);
 
         self.paths.batsign_alarm_template = self
             .paths
-            .resource_dir
+            .config_dir
             .join(defaults::batsign::ALARM_MESSAGE_TEMPLATE_FILENAME);
 
         self.paths.batsign_restored_template = self
             .paths
-            .resource_dir
+            .config_dir
             .join(defaults::batsign::RESTORED_MESSAGE_TEMPLATE_FILENAME);
     }
 
@@ -429,7 +429,7 @@ impl Settings {
 
     /// Applies CLI settings, returning the resulting settings.
     pub fn apply_cli(&mut self, cli: &Cli) {
-        // Resource directory is applied separately in Settings::with_resource_dir, since it needs to be applied before resolving resource paths and loading resources from disk.
+        // Config directory is applied separately in `inherit_config_dir` because it affects how other settings are loaded from disk.
         self.dry_run = cli.dry_run;
         self.debug = cli.debug;
     }

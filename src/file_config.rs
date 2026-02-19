@@ -145,7 +145,7 @@ impl From<&Settings> for FileConfig {
 pub fn deserialize_config_file(
     settings: &Settings,
 ) -> Result<Option<FileConfig>, confy::ConfyError> {
-    let config_pathbuf = settings.paths.resource_dir.join(defaults::CONFIG_FILENAME);
+    let config_pathbuf = settings.paths.config_dir.join(defaults::CONFIG_FILENAME);
 
     if !config_pathbuf.exists() {
         return Ok(None);
@@ -158,8 +158,8 @@ pub fn deserialize_config_file(
 }
 
 /// Resolves the configuration directory path, returning the directory as a string and an optional PathBuf. This is used for operations that need to know the config directory, such as saving the config file.
-pub fn resolve_default_resource_directory_from_env() -> Result<PathBuf, String> {
-    if let Some(path) = env::var_os("PELLX_MONITOR_RESOURCE_DIR").map(PathBuf::from) {
+pub fn resolve_default_config_directory_from_env() -> Result<PathBuf, String> {
+    if let Some(path) = env::var_os("PELLX_MONITOR_CONFIG_DIR").map(PathBuf::from) {
         return Ok(path);
     }
 
@@ -175,5 +175,5 @@ pub fn resolve_default_resource_directory_from_env() -> Result<PathBuf, String> 
         return Ok(path.join(".config").join(defaults::PROGRAM_ARG0));
     }
 
-    Err("could not resolve default resource directory from environment variables".to_string())
+    Err("could not resolve default configuration directory from environment variables".to_string())
 }

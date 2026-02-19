@@ -258,15 +258,15 @@ fn main() -> process::ExitCode {
 /// Initializes the settings by loading defaults, applying the config file, and then applying CLI overrides. If the `--save` flag is set, it saves the resolved configuration back to disk and exits.
 fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode> {
     let mut settings = settings::Settings::default();
-    if let Err(e) = settings.inherit_resource_dir(&cli.resource_dir) {
-        eprintln!("[!] Error resolving default resource directory: {}", e);
+    if let Err(e) = settings.inherit_config_dir(&cli.config_dir) {
+        eprintln!("[!] Error resolving default configuration directory: {}", e);
         return Err(process::ExitCode::from(40));
     }
 
-    if !settings.paths.resource_dir.exists() && !cli.save {
+    if !settings.paths.config_dir.exists() && !cli.save {
         eprintln!(
-            "[!] Resource directory `{}` does not exist. Create it or run with `--save` to generate default configuration and resources.",
-            settings.paths.resource_dir.display()
+            "[!] Configuration directory `{}` does not exist. Create it or run with `--save` to generate default configuration and resources.",
+            settings.paths.config_dir.display()
         );
         return Err(process::ExitCode::from(41));
     }
@@ -308,18 +308,18 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
     settings.apply_cli(cli);
 
     if cli.save {
-        if !settings.paths.resource_dir.exists() {
-            match fs::create_dir_all(&settings.paths.resource_dir) {
+        if !settings.paths.config_dir.exists() {
+            match fs::create_dir_all(&settings.paths.config_dir) {
                 Ok(()) => {
                     println!(
-                        "Resource directory `{}` created.",
-                        settings.paths.resource_dir.display()
+                        "Configuration directory `{}` created.",
+                        settings.paths.config_dir.display()
                     );
                 }
                 Err(e) => {
                     eprintln!(
-                        "[!] Failed to create resource directory `{}`: {e}",
-                        settings.paths.resource_dir.display()
+                        "[!] Failed to create configuration directory `{}`: {e}",
+                        settings.paths.config_dir.display()
                     );
                     return Err(process::ExitCode::from(10));
                 }
@@ -375,7 +375,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
 
         println!(
             "Configuration and resources written successfully to `{}`.",
-            settings.paths.resource_dir.display()
+            settings.paths.config_dir.display()
         );
         return Err(process::ExitCode::SUCCESS);
     }

@@ -8,9 +8,9 @@ use crate::defaults;
 #[command(version = defaults::VERSION)]
 #[command(author = defaults::AUTHOR)]
 pub struct Cli {
-    /// Specify an alternate resource directory
-    #[arg(short = 'r', long, value_name = "path to directory")]
-    pub resource_dir: Option<String>,
+    /// Specify an alternate configuration directory
+    #[arg(short = 'c', long, value_name = "path to directory")]
+    pub config_dir: Option<String>,
 
     /// Show the resolved configuration and exit
     #[arg(long)]
