@@ -30,6 +30,39 @@ impl Default for GpioSettings {
     }
 }
 
+impl GpioSettings {
+    /// Applies GPIO settings from the config file, overriding the default settings where specified.
+    fn apply_file(&mut self, gpio_config: &file_config::GpioConfig) {
+        if let Some(pin_number) = gpio_config.pin_number {
+            self.pin_number = pin_number;
+        }
+
+        if let Some(poll_interval) = gpio_config.poll_interval {
+            self.poll_interval = poll_interval;
+        }
+
+        if let Some(hold) = gpio_config.hold {
+            self.hold = hold;
+        }
+    }
+
+    /// Sanity check settings, returning a list of errors if any are found.
+    fn sanity_check(&self, vec: &mut Vec<String>) {
+        const MAX_GPIO_PIN: u8 = 27;
+
+        if self.pin_number > MAX_GPIO_PIN {
+            vec.push(format!(
+                "Invalid GPIO pin number: {}. Must be between 0 and {}.",
+                self.pin_number, MAX_GPIO_PIN
+            ));
+        }
+
+        if self.poll_interval == Duration::ZERO {
+            vec.push("GPIO poll interval must be greater than zero.".to_string());
+        }
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct SlackSettings {
     /// Whether Slack notifications are enabled.
@@ -68,9 +101,43 @@ impl Default for SlackSettings {
 }
 
 impl SlackSettings {
+    /// Applies Slack settings from the config file, overriding the default settings where specified.
+    fn apply_file(&mut self, slack_config: &file_config::SlackConfig) {
+        if let Some(enabled) = slack_config.enabled {
+            self.enabled = enabled;
+        }
+
+        if let Some(urls) = slack_config.urls.clone() {
+            self.urls = urls;
+        }
+
+        if let Some(notification_interval) = slack_config.notification_interval {
+            self.notification_interval = notification_interval;
+        }
+
+        if let Some(retry_interval) = slack_config.retry_interval {
+            self.retry_interval = retry_interval;
+        }
+    }
+
     /// Sanity check the Slack settings, returning true if they are valid and false if any issues are found. This is used to validate the settings before starting the monitoring loop.
-    pub fn sanity_check(&self, vec: &mut Vec<String>) {
+    fn sanity_check(&self, vec: &mut Vec<String>) {
+        if self.notification_interval == Duration::ZERO {
+            vec.push("Slack notifications interval must be non-zero.".to_string());
+        }
+
+        if self.retry_interval == Duration::ZERO {
+            vec.push("Slack notification retry interval must be non-zero.".to_string());
+        }
+
+        if !self.enabled {
+            return;
+        }
+
         if self.urls.is_empty() {
+            vec.push(
+                "Slack notifications are enabled but no webhook URLs are configured.".to_string(),
+            );
             return;
         }
 
@@ -127,9 +194,41 @@ impl Default for BatsignSettings {
 }
 
 impl BatsignSettings {
+    /// Applies Batsign settings from the config file, overriding the default settings where specified.
+    fn apply_file(&mut self, batsign_config: &file_config::BatsignConfig) {
+        if let Some(enabled) = batsign_config.enabled {
+            self.enabled = enabled;
+        }
+
+        if let Some(urls) = batsign_config.urls.clone() {
+            self.urls = urls;
+        }
+
+        if let Some(notification_interval) = batsign_config.notification_interval {
+            self.notification_interval = notification_interval;
+        }
+
+        if let Some(retry_interval) = batsign_config.retry_interval {
+            self.retry_interval = retry_interval;
+        }
+    }
+
     /// Sanity check the Batsign settings, returning true if they are valid and false if any issues are found. This is used to validate the settings before starting the monitoring loop.
-    pub fn sanity_check(&self, vec: &mut Vec<String>) {
+    fn sanity_check(&self, vec: &mut Vec<String>) {
+        if self.notification_interval == Duration::ZERO {
+            vec.push("Batsign notifications interval must be non-zero.".to_string());
+        }
+
+        if self.retry_interval == Duration::ZERO {
+            vec.push("Batsign notification retry interval must be non-zero.".to_string());
+        }
+
+        if !self.enabled {
+            return;
+        }
+
         if self.urls.is_empty() {
+            vec.push("Batsign notifications are enabled but no URLs are configured.".to_string());
             return;
         }
 
@@ -235,39 +334,9 @@ impl Settings {
 
     /// Sanity check settings, returning a list of errors if any are found.
     pub fn sanity_check(&self) -> Result<(), Vec<String>> {
-        const MAX_GPIO_PIN: u8 = 27;
-
         let mut vec = Vec::new();
 
-        if self.gpio.pin_number > MAX_GPIO_PIN {
-            vec.push(format!(
-                "Invalid GPIO pin number: {}. Must be between 0 and {}.",
-                self.gpio.pin_number, MAX_GPIO_PIN
-            ));
-        }
-
-        if self.gpio.poll_interval == Duration::ZERO {
-            vec.push("Poll interval must be greater than zero.".to_string());
-        }
-
-        if self.batsign.notification_interval == Duration::ZERO {
-            vec.push("Time between notifications must be greater than zero.".to_string());
-        }
-
-        if self.batsign.retry_interval == Duration::ZERO {
-            vec.push("Time between notification retries must be greater than zero.".to_string());
-        }
-
-        if self.slack.notification_interval == Duration::ZERO {
-            vec.push("Time between Slack notifications must be greater than zero.".to_string());
-        }
-
-        if self.slack.retry_interval == Duration::ZERO {
-            vec.push(
-                "Time between Slack notification retries must be greater than zero.".to_string(),
-            );
-        }
-
+        self.gpio.sanity_check(&mut vec);
         self.slack.sanity_check(&mut vec);
         self.batsign.sanity_check(&mut vec);
 
@@ -374,57 +443,14 @@ impl Settings {
     }
 
     /// Applies config file settings to the default settings, returning the resulting settings.
-    pub fn apply_file(&mut self, file: &Option<file_config::FileConfig>) {
-        let Some(file) = file else {
+    pub fn apply_file(&mut self, file_config: &Option<file_config::FileConfig>) {
+        let Some(file_config) = file_config else {
             return;
         };
 
-        // FileConfig
-        if let Some(pin_number) = file.gpio.pin_number {
-            self.gpio.pin_number = pin_number;
-        }
-
-        if let Some(poll_interval) = file.gpio.poll_interval {
-            self.gpio.poll_interval = poll_interval;
-        }
-
-        if let Some(hold) = file.gpio.hold {
-            self.gpio.hold = hold;
-        }
-
-        // SlackConfig
-        if let Some(enabled) = file.slack.enabled {
-            self.slack.enabled = enabled;
-        }
-
-        if let Some(urls) = file.slack.urls.clone() {
-            self.slack.urls = urls;
-        }
-
-        if let Some(slack_notification_interval) = file.slack.notification_interval {
-            self.slack.notification_interval = slack_notification_interval;
-        }
-
-        if let Some(slack_retry_interval) = file.slack.retry_interval {
-            self.slack.retry_interval = slack_retry_interval;
-        }
-
-        // BatsignConfig
-        if let Some(enabled) = file.batsign.enabled {
-            self.batsign.enabled = enabled;
-        }
-
-        if let Some(urls) = file.batsign.urls.clone() {
-            self.batsign.urls = urls;
-        }
-
-        if let Some(batsign_notification_interval) = file.batsign.notification_interval {
-            self.batsign.notification_interval = batsign_notification_interval;
-        }
-
-        if let Some(batsign_retry_interval) = file.batsign.retry_interval {
-            self.batsign.retry_interval = batsign_retry_interval;
-        }
+        self.gpio.apply_file(&file_config.gpio);
+        self.slack.apply_file(&file_config.slack);
+        self.batsign.apply_file(&file_config.batsign);
     }
 
     /// Applies CLI settings, returning the resulting settings.
