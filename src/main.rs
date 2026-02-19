@@ -300,8 +300,8 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         return Err(process::ExitCode::from(43));
     }
 
-    settings = settings::apply_file(settings, &config);
-    settings = settings::apply_cli(settings, cli);
+    settings.apply_file(&config);
+    settings.apply_cli(cli);
 
     if cli.save {
         if !settings.paths.resource_dir.exists() {

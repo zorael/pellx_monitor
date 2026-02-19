@@ -350,70 +350,67 @@ impl Settings {
 
         vec
     }
-}
 
-/// Applies config file settings to the default settings, returning the resulting settings.
-pub fn apply_file(mut s: Settings, file: &Option<file_config::FileConfig>) -> Settings {
-    let Some(file) = file else {
-        return s;
-    };
+    /// Applies config file settings to the default settings, returning the resulting settings.
+    pub fn apply_file(&mut self, file: &Option<file_config::FileConfig>) {
+        let Some(file) = file else {
+            return;
+        };
 
-    // FileConfig
-    if let Some(pin_number) = file.gpio.pin_number {
-        s.gpio.pin_number = pin_number;
+        // FileConfig
+        if let Some(pin_number) = file.gpio.pin_number {
+            self.gpio.pin_number = pin_number;
+        }
+
+        if let Some(poll_interval) = file.gpio.poll_interval {
+            self.gpio.poll_interval = poll_interval;
+        }
+
+        if let Some(hold) = file.gpio.hold {
+            self.gpio.hold = hold;
+        }
+
+        // SlackConfig
+        if let Some(enabled) = file.slack.enabled {
+            self.slack.enabled = enabled;
+        }
+
+        if let Some(urls) = file.slack.urls.clone() {
+            self.slack.urls = urls;
+        }
+
+        if let Some(slack_notification_interval) = file.slack.notification_interval {
+            self.slack.notification_interval = slack_notification_interval;
+        }
+
+        if let Some(slack_retry_interval) = file.slack.retry_interval {
+            self.slack.retry_interval = slack_retry_interval;
+        }
+
+        // BatsignConfig
+        if let Some(enabled) = file.batsign.enabled {
+            self.batsign.enabled = enabled;
+        }
+
+        if let Some(urls) = file.batsign.urls.clone() {
+            self.batsign.urls = urls;
+        }
+
+        if let Some(batsign_notification_interval) = file.batsign.notification_interval {
+            self.batsign.notification_interval = batsign_notification_interval;
+        }
+
+        if let Some(batsign_retry_interval) = file.batsign.retry_interval {
+            self.batsign.retry_interval = batsign_retry_interval;
+        }
     }
 
-    if let Some(poll_interval) = file.gpio.poll_interval {
-        s.gpio.poll_interval = poll_interval;
+    /// Applies CLI settings, returning the resulting settings.
+    pub fn apply_cli(&mut self, cli: &Cli) {
+        // Resource directory is applied separately in Settings::with_resource_dir, since it needs to be applied before resolving resource paths and loading resources from disk.
+        self.dry_run = cli.dry_run;
+        self.debug = cli.debug;
     }
-
-    if let Some(hold) = file.gpio.hold {
-        s.gpio.hold = hold;
-    }
-
-    // SlackConfig
-    if let Some(enabled) = file.slack.enabled {
-        s.slack.enabled = enabled;
-    }
-
-    if let Some(urls) = file.slack.urls.clone() {
-        s.slack.urls = urls;
-    }
-
-    if let Some(slack_notification_interval) = file.slack.notification_interval {
-        s.slack.notification_interval = slack_notification_interval;
-    }
-
-    if let Some(slack_retry_interval) = file.slack.retry_interval {
-        s.slack.retry_interval = slack_retry_interval;
-    }
-
-    // BatsignConfig
-    if let Some(enabled) = file.batsign.enabled {
-        s.batsign.enabled = enabled;
-    }
-
-    if let Some(urls) = file.batsign.urls.clone() {
-        s.batsign.urls = urls;
-    }
-
-    if let Some(batsign_notification_interval) = file.batsign.notification_interval {
-        s.batsign.notification_interval = batsign_notification_interval;
-    }
-
-    if let Some(batsign_retry_interval) = file.batsign.retry_interval {
-        s.batsign.retry_interval = batsign_retry_interval;
-    }
-
-    s
-}
-
-/// Applies CLI settings to the given settings, returning the resulting settings.
-pub fn apply_cli(mut s: Settings, cli: &Cli) -> Settings {
-    // Resource directory is applied separately in Settings::with_resource_dir, since it needs to be applied before resolving resource paths and loading resources from disk.
-    s.dry_run = cli.dry_run;
-    s.debug = cli.debug;
-    s
 }
 
 /// Reads a file into a string, trimming whitespace, and returning an error if the file cannot be read.
