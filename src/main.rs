@@ -129,13 +129,15 @@ fn main() -> process::ExitCode {
                     && notifications::should_send_notification(now, &batsign_low_state);
 
                 if should_send_slack_notification {
+                    slack_high_state.reset();
+
                     let message = &notifications::format_notification_message(
                         settings.slack.restored_message_template_body.as_str(),
                         &settings,
                         &low_since,
                     );
 
-                    match slack::send_slack_notification(
+                    if let Err(e) = slack::send_slack_notification(
                         &client,
                         now,
                         &settings,
@@ -143,35 +145,27 @@ fn main() -> process::ExitCode {
                         message,
                         &mut slack_low_state,
                     ) {
-                        Ok(()) => {
-                            slack_high_state.reset();
-                        }
-                        Err(e) => {
-                            eprintln!("[!] Failed to send Slack notification: {e}");
-                        }
+                        eprintln!("[!] Failed to send Slack notification: {e}");
                     };
                 }
 
                 if should_send_batsign_notification {
+                    batsign_high_state.reset();
+
                     let message = &notifications::format_notification_message(
                         settings.batsign.restored_message_template_body.as_str(),
                         &settings,
                         &low_since,
                     );
 
-                    match batsign::send_batsign_notification(
+                    if let Err(e) = batsign::send_batsign_notification(
                         &client,
                         now,
                         &settings,
                         message,
                         &mut batsign_low_state,
                     ) {
-                        Ok(()) => {
-                            batsign_high_state.reset();
-                        }
-                        Err(e) => {
-                            eprintln!("[!] Failed to send Batsign notification: {e}");
-                        }
+                        eprintln!("[!] Failed to send Batsign notification: {e}");
                     };
                 }
             }
@@ -201,13 +195,15 @@ fn main() -> process::ExitCode {
                     && notifications::should_send_notification(now, &batsign_high_state);
 
                 if should_send_slack_notification {
+                    slack_low_state.reset();
+
                     let message = &notifications::format_notification_message(
                         settings.slack.alarm_message_template_body.as_str(),
                         &settings,
                         &high_since,
                     );
 
-                    match slack::send_slack_notification(
+                    if let Err(e) = slack::send_slack_notification(
                         &client,
                         now,
                         &settings,
@@ -215,36 +211,28 @@ fn main() -> process::ExitCode {
                         message,
                         &mut slack_high_state,
                     ) {
-                        Ok(()) => {
-                            slack_low_state.reset();
-                        }
-                        Err(e) => {
-                            eprintln!("[!] Failed to send Slack notification: {e}");
-                        }
+                        eprintln!("[!] Failed to send Slack notification: {e}");
                     };
                 }
 
                 if should_send_batsign_notification {
+                    batsign_low_state.reset();
+
                     let message = &notifications::format_notification_message(
                         settings.batsign.alarm_message_template_body.as_str(),
                         &settings,
                         &high_since,
                     );
 
-                    match batsign::send_batsign_notification(
+                    if let Err(e) = batsign::send_batsign_notification(
                         &client,
                         now,
                         &settings,
                         message,
                         &mut batsign_high_state,
                     ) {
-                        Ok(()) => {
-                            batsign_low_state.reset();
-                        }
-                        Err(e) => {
-                            eprintln!("[!] Failed to send Batsign notification: {e}");
-                        }
-                    };
+                        eprintln!("[!] Failed to send Batsign notification: {e}");
+                    }
                 }
 
                 still_in_initial_state = false;
