@@ -18,7 +18,7 @@ pub struct Cli {
     pub show: bool,
 
     /// Print additional debug information
-    #[arg(long)]
+    #[arg(short = 'd', long)]
     pub debug: bool,
 
     /// Perform a dry run without sending any notifications
