@@ -17,10 +17,10 @@ pub mod slack {
     use std::time::Duration;
 
     /// Resource file name for the Slack alarm message template.
-    pub const ALARM_MESSAGE_TEMPLATE_FILENAME: &str = "slack_alarm_message_template.txt";
+    pub const ALARM_MESSAGE_TEMPLATE_FILENAME: &str = "slack_alarm.txt";
 
     /// Resource file name for the Slack restored message template.
-    pub const RESTORED_MESSAGE_TEMPLATE_FILENAME: &str = "slack_restored_message_template.txt";
+    pub const RESTORED_MESSAGE_TEMPLATE_FILENAME: &str = "slack_restored.txt";
 
     /// Default Slack alarm message template.
     pub const ALARM_MESSAGE_TEMPLATE_BODY: &str =
@@ -40,10 +40,10 @@ pub mod batsign {
     use std::time::Duration;
 
     /// Resource file name for the alarm message template.
-    pub const ALARM_MESSAGE_TEMPLATE_FILENAME: &str = "batsign_alarm_message_template.txt";
+    pub const ALARM_MESSAGE_TEMPLATE_FILENAME: &str = "batsign_alarm.txt";
 
     /// Resource file name for the restored message template.
-    pub const RESTORED_MESSAGE_TEMPLATE_FILENAME: &str = "batsign_restored_message_template.txt";
+    pub const RESTORED_MESSAGE_TEMPLATE_FILENAME: &str = "batsign_restored.txt";
 
     /// Default alarm message template.
     pub const ALARM_MESSAGE_TEMPLATE_BODY: &str =
