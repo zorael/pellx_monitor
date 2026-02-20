@@ -305,6 +305,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
 
     settings.apply_file(&config);
     settings.apply_cli(cli);
+    settings.clean_up();
 
     if cli.save {
         if !settings.paths.config_dir.exists() {

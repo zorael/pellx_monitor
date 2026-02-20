@@ -120,6 +120,11 @@ impl SlackSettings {
         }
     }
 
+    /// Trims whitespace from the Slack webhook URLs and removes any empty URLs.
+    fn trim_urls(&mut self) {
+        self.urls = trim_vec_of_strings(&self.urls);
+    }
+
     /// Sanity check the Slack settings, returning true if they are valid and false if any issues are found. This is used to validate the settings before starting the monitoring loop.
     fn sanity_check(&self, vec: &mut Vec<String>) {
         if self.notification_interval == Duration::ZERO {
@@ -211,6 +216,11 @@ impl BatsignSettings {
         if let Some(retry_interval) = batsign_config.retry_interval {
             self.retry_interval = retry_interval;
         }
+    }
+
+    /// Trims whitespace from the Batsign URLs and removes any empty URLs.
+    fn trim_urls(&mut self) {
+        self.urls = trim_vec_of_strings(&self.urls);
     }
 
     /// Sanity check the Batsign settings, returning true if they are valid and false if any issues are found. This is used to validate the settings before starting the monitoring loop.
@@ -330,6 +340,12 @@ impl Settings {
             }
             Err(e) => Err(e),
         }
+    }
+
+    /// Clean up settings by trimming whitespace from URLs and removing empty URLs.
+    pub fn clean_up(&mut self) {
+        self.slack.trim_urls();
+        self.batsign.trim_urls();
     }
 
     /// Sanity check settings, returning a list of errors if any are found.
@@ -464,4 +480,12 @@ impl Settings {
 /// Reads a file into a string, trimming whitespace, and returning an error if the file cannot be read.
 fn read_to_trimmed_string(path: &Path) -> io::Result<String> {
     Ok(fs::read_to_string(path)?.trim().to_string())
+}
+
+/// Trims whitespace from each string in the vector and removes any empty strings, returning a new vector.
+fn trim_vec_of_strings(vec: &[String]) -> Vec<String> {
+    vec.iter()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect()
 }
