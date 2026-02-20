@@ -85,37 +85,26 @@ pub fn send_batsign_notification(
 
 /// Extracts email addresses from a list of Batsign URLs, returning them as a comma-separated string.
 fn get_emails_from_batsign_urls(urls: &[String]) -> Option<String> {
-    let mut emails = Vec::new();
+    let emails: Vec<&str> = urls
+        .iter()
+        .filter_map(|u| get_email_from_single_batsign_url(u))
+        .collect();
 
-    for url in urls {
-        if let Some(email) = get_email_from_single_batsign_url(url) {
-            emails.push(email);
+    (!emails.is_empty()).then_some(emails.join(", "))
+}
+
+/// Extracts an email address from a single Batsign URL, returning it as a `&str`.
+fn get_email_from_single_batsign_url(url: &str) -> Option<&str> {
+    // https://batsign.me/at/{email}/{token}
+    //       ^^          ^  ^       ^       ^?
+    let mut parts = url.split('/');
+
+    while let Some(p) = parts.next() {
+        if p == "at" {
+            let email = parts.next()?;
+            return email.contains('@').then_some(email);
         }
     }
 
-    if emails.is_empty() {
-        None
-    } else {
-        Some(emails.join(", "))
-    }
-}
-
-/// Extracts an email address from a single Batsign URL, returning it as a string. This assumes that the Batsign URL is in the format "https://batsign.io/{email}/{token}".
-fn get_email_from_single_batsign_url(url: &str) -> Option<String> {
-    let s = String::from(url);
-    let splits = s.split('/').collect::<Vec<&str>>();
-    // https://batsign.me/at/{email}/{token}
-    //       ^^          ^  ^       ^       ^?
-    //       01          2  3       4       5
-    //                      ---[4]---
-
-    if splits.len() < 6 {
-        return None;
-    }
-
-    // Verify that the email has an '@' symbol in it
-    match splits[4].contains("@") {
-        true => Some(splits[4].to_string()),
-        false => None,
-    }
+    None
 }
