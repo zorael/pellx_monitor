@@ -259,7 +259,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
 
     if !settings.paths.config_dir.exists() && !cli.save {
         eprintln!(
-            "[!] Configuration directory `{}` does not exist. Create it or run with `--save` to generate default configuration and resources.",
+            "[!] Configuration directory {} does not exist. Create it or run with `--save` to generate default configuration and resources.",
             settings.paths.config_dir.display()
         );
         return Err(process::ExitCode::from(41));
@@ -283,16 +283,16 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         Ok(cfg) => cfg,
         Err(e) => {
             eprintln!(
-                "[!] Failed to read configuration file `{}`: {e}",
+                "[!] Failed to read configuration file {}: {e}",
                 settings.paths.config_file.display()
             );
             return Err(process::ExitCode::from(43));
         }
     };
 
-    if config.is_none() && !cli.save {
+    if !cli.save && config.is_none() {
         eprintln!(
-            "[!] No configuration file found at `{}`. Create it or run with `--save` to generate default configuration and resources.",
+            "[!] No configuration file found at {}. Create it or run with `--save` to generate default configuration and resources.",
             settings.paths.config_file.display()
         );
         return Err(process::ExitCode::from(44));
@@ -307,13 +307,13 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
             match fs::create_dir_all(&settings.paths.config_dir) {
                 Ok(()) => {
                     println!(
-                        "Configuration directory `{}` created.",
+                        "Configuration directory {} created.",
                         settings.paths.config_dir.display()
                     );
                 }
                 Err(e) => {
                     eprintln!(
-                        "[!] Failed to create configuration directory `{}`: {e}",
+                        "[!] Failed to create configuration directory {}: {e}",
                         settings.paths.config_dir.display()
                     );
                     return Err(process::ExitCode::from(10));
@@ -323,8 +323,11 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
 
         let config = file_config::FileConfig::from(&settings);
 
-        if confy::store_path(&settings.paths.config_file, config).is_err() {
-            eprintln!("[!] Failed to write configuration file.");
+        if let Err(e) = confy::store_path(&settings.paths.config_file, config) {
+            eprintln!(
+                "[!] Failed to write configuration file {}: {e}",
+                settings.paths.config_file.display()
+            );
             return Err(process::ExitCode::from(11));
         };
 
@@ -369,7 +372,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         }
 
         println!(
-            "Configuration and resources written successfully to `{}`.",
+            "Configuration and resources written successfully to {}.",
             settings.paths.config_dir.display()
         );
         return Err(process::ExitCode::SUCCESS);
