@@ -416,27 +416,27 @@ impl Settings {
     }
 
     /// Loads the Batsign URLs and message templates from disk, returning an error if any of the files cannot be read. This is used to load the resources after resolving the resource paths.
-    pub fn load_resources_from_disk(&mut self) -> Vec<(&PathBuf, io::Error)> {
+    pub fn load_resources_from_disk(&mut self) -> Vec<(PathBuf, io::Error)> {
         let mut vec = Vec::new();
 
         match read_to_trimmed_string(&self.paths.slack_alarm_template) {
             Ok(s) => self.slack.alarm_message_template_body = s,
-            Err(e) => vec.push((&self.paths.slack_alarm_template, e)),
+            Err(e) => vec.push((self.paths.slack_alarm_template.clone(), e)),
         };
 
         match read_to_trimmed_string(&self.paths.slack_restored_template) {
             Ok(s) => self.slack.restored_message_template_body = s,
-            Err(e) => vec.push((&self.paths.slack_restored_template, e)),
+            Err(e) => vec.push((self.paths.slack_restored_template.clone(), e)),
         };
 
         match read_to_trimmed_string(&self.paths.batsign_alarm_template) {
             Ok(s) => self.batsign.alarm_message_template_body = s,
-            Err(e) => vec.push((&self.paths.batsign_alarm_template, e)),
+            Err(e) => vec.push((self.paths.batsign_alarm_template.clone(), e)),
         };
 
         match read_to_trimmed_string(&self.paths.batsign_restored_template) {
             Ok(s) => self.batsign.restored_message_template_body = s,
-            Err(e) => vec.push((&self.paths.batsign_restored_template, e)),
+            Err(e) => vec.push((self.paths.batsign_restored_template.clone(), e)),
         };
 
         vec
