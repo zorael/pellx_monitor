@@ -65,20 +65,7 @@ pub fn send_batsign_notification(
         println!("HTTP statuses: {:?}", statuses);
     }
 
-    let mut num_errors: usize = 0;
-
-    for status in statuses {
-        if !status.is_success() {
-            num_errors += 1;
-        }
-    }
-
-    if num_errors == 0 {
-        state.previous = Some(now);
-        state.previous_failure = None;
-    } else {
-        state.previous_failure = Some(now);
-    }
+    state.update_based_on_statuses(now, &statuses);
 
     Ok(())
 }

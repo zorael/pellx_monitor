@@ -27,6 +27,18 @@ impl NotificationState {
         self.previous = None;
         self.previous_failure = None;
     }
+
+    /// Updates the notification state based on the provided HTTP status codes. If all statuses indicate success, the previous success timestamp is updated and any previous failure is cleared. If any status indicates a failure, the previous failure timestamp is updated.
+    pub fn update_based_on_statuses(&mut self, now: Instant, statuses: &[reqwest::StatusCode]) {
+        let no_errors = statuses.iter().filter(|s| !s.is_success()).count() == 0;
+
+        if no_errors {
+            self.previous = Some(now);
+            self.previous_failure = None;
+        } else {
+            self.previous_failure = Some(now);
+        }
+    }
 }
 
 /// Constructs a notification message body.
