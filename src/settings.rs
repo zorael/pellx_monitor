@@ -361,6 +361,12 @@ impl Settings {
 
     /// Print the settings in a human-readable format.
     pub fn print(&self) {
+        if self.debug {
+            // If debug is enabled, print the entire settings struct with all details.
+            println!("{:#?}", self);
+            return;
+        }
+
         println!(
             "Using configuration directory {}",
             self.paths.config_dir.display()

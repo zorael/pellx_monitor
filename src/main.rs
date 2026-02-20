@@ -42,12 +42,7 @@ fn main() -> process::ExitCode {
     };
 
     if cli.show {
-        if settings.debug {
-            println!("{:#?}", &settings);
-        } else {
-            settings.print();
-        }
-
+        settings.print();
         return process::ExitCode::SUCCESS;
     }
 
@@ -61,12 +56,7 @@ fn main() -> process::ExitCode {
         return process::ExitCode::from(20);
     }
 
-    if settings.debug {
-        println!("{:#?}", &settings);
-    } else {
-        settings.print();
-    }
-
+    settings.print();
     println!();
 
     run_monitor_loop(settings)
