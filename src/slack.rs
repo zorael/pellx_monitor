@@ -69,7 +69,7 @@ pub fn send_slack_notification(
         println!("Slack notifications sent; HTTP statuses: {:?}", statuses);
     }
 
-    let mut num_errors: u8 = 0;
+    let mut num_errors: usize = 0;
 
     for status in statuses {
         if !status.is_success() {
