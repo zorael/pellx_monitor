@@ -280,7 +280,7 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         }
     }
 
-    let config = match file_config::deserialize_config_file(&settings) {
+    let config = match file_config::deserialize_config_file(&settings.paths.config_file) {
         Ok(cfg) => cfg,
         Err(e) => {
             eprintln!(

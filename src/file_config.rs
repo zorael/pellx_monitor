@@ -143,15 +143,13 @@ impl From<&Settings> for FileConfig {
 
 /// Deserializes the configuration file from disk, returning an optional FileConfig. This is used to load the configuration file at startup.
 pub fn deserialize_config_file(
-    settings: &Settings,
+    config_file: &PathBuf,
 ) -> Result<Option<FileConfig>, confy::ConfyError> {
-    let config_pathbuf = settings.paths.config_dir.join(defaults::CONFIG_FILENAME);
-
-    if !config_pathbuf.exists() {
+    if !config_file.exists() {
         return Ok(None);
     }
 
-    match confy::load_path(config_pathbuf) {
+    match confy::load_path(config_file) {
         Ok(cfg) => Ok(Some(cfg)),
         Err(e) => Err(e),
     }
