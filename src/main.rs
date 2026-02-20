@@ -269,9 +269,11 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
 
     let resource_load_results = settings.load_resources_from_disk();
 
-    if !cli.save {
+    if !cli.save && !resource_load_results.is_empty() {
+        eprintln!("[!] Failed to load resouces from disk:");
+
         for (pathbuf, e) in &resource_load_results {
-            eprintln!("[!] Failed to load resource `{}`: {e}", pathbuf.display());
+            eprintln!("  * {}: {e}", pathbuf.display());
         }
 
         if !resource_load_results.is_empty() {
