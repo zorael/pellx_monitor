@@ -2,9 +2,9 @@
 
 Monitor and error-reporter of a **PellX pellets burner**.
 
-Intended to be run on a Raspberry Pi connected via GPIO to terminal 1 and 2 on the controller board of a PellX burner. The electrical connection between said terminals is closed when the machine is running normally and opens when it is in an error state (including power failures). A notification is sent when this is detected.
+Intended to be run on a **Raspberry Pi-equivalent** device connected via GPIO to terminals on the controller board of a PellX burner. Terminals **1** and **2** are electrically connected when the burner is operating normally, and the circuit is broken when it is in an error state (including on power failures).
 
-Notifications can be sent as [**Slack** messages](https://api.slack.com/apps?new_app=1) (via [webhook URLs](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks)) and/or as short emails via [**Batsign**](https://batsign.me).
+A notification is sent when this is detected. They can be sent as [**Slack** messages](https://api.slack.com/apps?new_app=1) (via [webhook URLs](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks)) and/or as short emails via [**Batsign**](https://batsign.me).
 
 ## tl;dr
 
@@ -23,14 +23,23 @@ Options:
 
 Use `--save` to create a directory with configuration and resource files. Edit the `config.toml` inside it to get started.
 
+## cross-compilation
+
+Depending on the type of device you intend to run it on, compilation memory required may be a limiting factor and cross-compilation on a more competent machine may be required. For instance, a **Raspberry Pi Zero 2W** has only 512 megabytes of RAM, which is insufficient to comfortably build this project.
+
+```
+cargo build --target=aarch64-unknown-linux-gnu
+```
+
 ## todo
 
-* external command as notification
+* external command as notification methods
 * implement notification methods like `Box<dyn Notifier>`
 * better documentation
+* more unit tests
 * review all textual output
 * colored terminal output?
 
 ## license
 
-This project is dual-licensed under the [**MIT License**](LICENSE-MIT) and the [**Apache License (version 2.0)**](LICENSE-APACHE).
+This project is dual-licensed under the [**MIT License**](LICENSE-MIT) and the [**Apache License (Version 2.0)**](LICENSE-APACHE).
