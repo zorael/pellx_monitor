@@ -105,7 +105,7 @@ fn run_monitor_loop(settings: settings::Settings) -> process::ExitCode {
 
     let mut low_since: Option<Instant> = None;
     let mut high_since: Option<Instant> = None;
-    let mut still_in_initial_state = true;
+    let mut seen_alarm = false;
 
     loop {
         match pin.read() {
@@ -118,7 +118,7 @@ fn run_monitor_loop(settings: settings::Settings) -> process::ExitCode {
                     println!("LOW");
                 }
 
-                if !qualified || still_in_initial_state {
+                if !qualified || !seen_alarm {
                     thread::sleep(settings.gpio.poll_interval);
                     continue;
                 }
@@ -209,7 +209,7 @@ fn run_monitor_loop(settings: settings::Settings) -> process::ExitCode {
                         &high_since,
                     );
 
-                    if let Err(e) = slack::send_slack_notification(
+                    match slack::send_slack_notification(
                         &client,
                         now,
                         &settings,
@@ -217,7 +217,8 @@ fn run_monitor_loop(settings: settings::Settings) -> process::ExitCode {
                         &message,
                         &mut slack_high_state,
                     ) {
-                        eprintln!("[!] Failed to send Slack notification: {e}");
+                        Ok(()) => seen_alarm = true,
+                        Err(e) => eprintln!("[!] Failed to send Slack notification: {e}"),
                     };
                 }
 
@@ -230,18 +231,17 @@ fn run_monitor_loop(settings: settings::Settings) -> process::ExitCode {
                         &high_since,
                     );
 
-                    if let Err(e) = batsign::send_batsign_notification(
+                    match batsign::send_batsign_notification(
                         &client,
                         now,
                         &settings,
                         &message,
                         &mut batsign_high_state,
                     ) {
-                        eprintln!("[!] Failed to send Batsign notification: {e}");
-                    }
+                        Ok(()) => seen_alarm = true,
+                        Err(e) => eprintln!("[!] Failed to send Batsign notification: {e}"),
+                    };
                 }
-
-                still_in_initial_state = false;
             }
         }
 
