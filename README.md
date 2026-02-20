@@ -33,4 +33,4 @@ Use `--save` to create a directory with configuration and resource files. Edit t
 
 ## license
 
-This project is dual-licensed under the [**MIT License**](LICENSE-MIT) and [**Apache License 2.0**](LICENSE-APACHE).
+This project is dual-licensed under the [**MIT License**](LICENSE-MIT) and the [**Apache License (version 2.0)**](LICENSE-APACHE).

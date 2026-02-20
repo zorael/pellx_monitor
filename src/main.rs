@@ -27,8 +27,12 @@ fn main() -> process::ExitCode {
     let cli = cli::Cli::parse();
 
     if cli.version {
-        // This is the only way to get a neat --version output
-        println!("Licensed under the Boost Software License 1.0.");
+        // This is the only way to get a neat --version output.
+        // The banner with version is already printed just prior to this before clap parses arguments,
+        // so we can just exit successfully here after echoing the licenses.
+        println!(
+            "This project is dual-licensed under the MIT License and the Apache License (Version 2.0)."
+        );
         return process::ExitCode::SUCCESS;
     }
 
