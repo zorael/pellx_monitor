@@ -59,7 +59,7 @@ pub fn send_batsign_notification(
 
     if !statuses.is_empty() {
         if let Some(emails) = get_emails_from_batsign_urls(&settings.batsign.urls) {
-            println!("Batsigns sent to: {:?}", emails);
+            println!("Batsigns sent to: {}", emails);
         } else {
             println!("Batsigns sent to URLs: {:?}", settings.batsign.urls);
         }
