@@ -69,6 +69,11 @@ fn main() -> process::ExitCode {
 
     println!();
 
+    run_monitor_loop(settings)
+}
+
+/// Runs the main monitor loop. This function will block indefinitely, monitoring the GPIO pin and sending notifications as configured.
+fn run_monitor_loop(settings: settings::Settings) -> process::ExitCode {
     let gpio = match Gpio::new() {
         Ok(g) => g,
         Err(e) => {
