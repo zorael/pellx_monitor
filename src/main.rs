@@ -142,7 +142,7 @@ fn main() -> process::ExitCode {
                 if should_send_slack_notification {
                     slack_high_state.reset();
 
-                    let message = &notifications::format_notification_message(
+                    let message = notifications::format_notification_message(
                         settings.slack.restored_message_template_body.as_str(),
                         &settings,
                         &low_since,
@@ -153,7 +153,7 @@ fn main() -> process::ExitCode {
                         now,
                         &settings,
                         slack::SLACK_SUCCESS_EMOJI,
-                        message,
+                        &message,
                         &mut slack_low_state,
                     ) {
                         eprintln!("[!] Failed to send Slack notification: {e}");
@@ -163,7 +163,7 @@ fn main() -> process::ExitCode {
                 if should_send_batsign_notification {
                     batsign_high_state.reset();
 
-                    let message = &notifications::format_notification_message(
+                    let message = notifications::format_notification_message(
                         settings.batsign.restored_message_template_body.as_str(),
                         &settings,
                         &low_since,
@@ -173,7 +173,7 @@ fn main() -> process::ExitCode {
                         &client,
                         now,
                         &settings,
-                        message,
+                        &message,
                         &mut batsign_low_state,
                     ) {
                         eprintln!("[!] Failed to send Batsign notification: {e}");
@@ -208,7 +208,7 @@ fn main() -> process::ExitCode {
                 if should_send_slack_notification {
                     slack_low_state.reset();
 
-                    let message = &notifications::format_notification_message(
+                    let message = notifications::format_notification_message(
                         settings.slack.alarm_message_template_body.as_str(),
                         &settings,
                         &high_since,
@@ -219,7 +219,7 @@ fn main() -> process::ExitCode {
                         now,
                         &settings,
                         slack::SLACK_ERROR_EMOJI,
-                        message,
+                        &message,
                         &mut slack_high_state,
                     ) {
                         eprintln!("[!] Failed to send Slack notification: {e}");
@@ -229,7 +229,7 @@ fn main() -> process::ExitCode {
                 if should_send_batsign_notification {
                     batsign_low_state.reset();
 
-                    let message = &notifications::format_notification_message(
+                    let message = notifications::format_notification_message(
                         settings.batsign.alarm_message_template_body.as_str(),
                         &settings,
                         &high_since,
@@ -239,7 +239,7 @@ fn main() -> process::ExitCode {
                         &client,
                         now,
                         &settings,
-                        message,
+                        &message,
                         &mut batsign_high_state,
                     ) {
                         eprintln!("[!] Failed to send Batsign notification: {e}");
