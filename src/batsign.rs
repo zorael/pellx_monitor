@@ -23,8 +23,10 @@ pub fn send_batsign_notification_impl(
         return Ok(statuses);
     }
 
+    let message = message.to_owned();
+
     for url in urls {
-        let res = client.post(url).body(message.to_string()).send()?;
+        let res = client.post(url).body(message.clone()).send()?;
         statuses.push(res.status());
     }
 
