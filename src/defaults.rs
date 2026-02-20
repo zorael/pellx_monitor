@@ -80,3 +80,21 @@ pub const VERSION: &str = concat!("v", env!("CARGO_PKG_VERSION"), SEMVER_PATCH);
 
 /// Source repository URL.
 pub const SOURCE_REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
+
+pub mod exit_codes {
+    pub const WRONG_PLATFORM: u8 = 100;
+    pub const FAILED_TO_CREATE_CONFIG_DIR: u8 = 10;
+    pub const FAILED_TO_WRITE_CONFIG_FILE: u8 = 11;
+    pub const FAILED_TO_WRITE_SLACK_ALARM_TEMPLATE: u8 = 12;
+    pub const FAILED_TO_WRITE_SLACK_RESTORED_TEMPLATE: u8 = 13;
+    pub const FAILED_TO_WRITE_BATSIGN_ALARM_TEMPLATE: u8 = 14;
+    pub const FAILED_TO_WRITE_BATSIGN_RESTORED_TEMPLATE: u8 = 15;
+    pub const CONFIGURATION_ERROR: u8 = 20;
+    pub const FAILED_TO_INITIALISE_GPIO: u8 = 30;
+    pub const FAILED_TO_SET_PIN_MODE: u8 = 31;
+    pub const FAILED_TO_RESOLVE_CONFIG_DIR: u8 = 40;
+    pub const CONFIG_DIR_DOES_NOT_EXIST: u8 = 41;
+    pub const FAILED_TO_LOAD_RESOURCES: u8 = 42;
+    pub const FAILED_TO_READ_CONFIG_FILE: u8 = 43;
+    pub const CONFIG_FILE_DOES_NOT_EXIST: u8 = 44;
+}

@@ -18,7 +18,7 @@ use crate::notifications::NotificationState;
 fn main() -> process::ExitCode {
     if !cfg!(target_os = "linux") {
         eprintln!("[!] This program can only be run on Linux.");
-        return process::ExitCode::from(100);
+        return process::ExitCode::from(defaults::exit_codes::WRONG_PLATFORM);
     }
 
     print_banner();
@@ -53,7 +53,7 @@ fn main() -> process::ExitCode {
             eprintln!("  * {error}");
         }
 
-        return process::ExitCode::from(20);
+        return process::ExitCode::from(defaults::exit_codes::CONFIGURATION_ERROR);
     }
 
     settings.print();
@@ -68,7 +68,7 @@ fn run_monitor_loop(settings: settings::Settings) -> process::ExitCode {
         Ok(g) => g,
         Err(e) => {
             eprintln!("[!] Failed to initialize GPIO: {e}");
-            return process::ExitCode::from(30);
+            return process::ExitCode::from(defaults::exit_codes::FAILED_TO_INITIALISE_GPIO);
         }
     };
 
@@ -79,7 +79,7 @@ fn run_monitor_loop(settings: settings::Settings) -> process::ExitCode {
                 "[!] Failed to set mode of GPIO{}: {e}",
                 settings.gpio.pin_number
             );
-            return process::ExitCode::from(31);
+            return process::ExitCode::from(defaults::exit_codes::FAILED_TO_SET_PIN_MODE);
         }
     };
 
@@ -254,7 +254,9 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
     let mut settings = settings::Settings::default();
     if let Err(e) = settings.inherit_config_dir(&cli.config_dir) {
         eprintln!("[!] Error resolving default configuration directory: {}", e);
-        return Err(process::ExitCode::from(40));
+        return Err(process::ExitCode::from(
+            defaults::exit_codes::FAILED_TO_RESOLVE_CONFIG_DIR,
+        ));
     }
 
     if !settings.paths.config_dir.exists() && !cli.save {
@@ -262,7 +264,9 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
             "[!] Configuration directory {} does not exist. Create it or run with `--save` to generate default configuration and resources.",
             settings.paths.config_dir.display()
         );
-        return Err(process::ExitCode::from(41));
+        return Err(process::ExitCode::from(
+            defaults::exit_codes::CONFIG_DIR_DOES_NOT_EXIST,
+        ));
     }
 
     settings.resolve_resource_paths();
@@ -277,7 +281,9 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         }
 
         if !resource_load_results.is_empty() {
-            return Err(process::ExitCode::from(42));
+            return Err(process::ExitCode::from(
+                defaults::exit_codes::FAILED_TO_LOAD_RESOURCES,
+            ));
         }
     }
 
@@ -288,7 +294,9 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
                 "[!] Failed to read configuration file {}: {e}",
                 settings.paths.config_file.display()
             );
-            return Err(process::ExitCode::from(43));
+            return Err(process::ExitCode::from(
+                defaults::exit_codes::FAILED_TO_READ_CONFIG_FILE,
+            ));
         }
     };
 
@@ -297,7 +305,9 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
             "[!] No configuration file found at {}. Create it or run with `--save` to generate default configuration and resources.",
             settings.paths.config_file.display()
         );
-        return Err(process::ExitCode::from(44));
+        return Err(process::ExitCode::from(
+            defaults::exit_codes::CONFIG_FILE_DOES_NOT_EXIST,
+        ));
     }
 
     settings.apply_file(&config);
@@ -318,7 +328,9 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
                         "[!] Failed to create configuration directory {}: {e}",
                         settings.paths.config_dir.display()
                     );
-                    return Err(process::ExitCode::from(10));
+                    return Err(process::ExitCode::from(
+                        defaults::exit_codes::FAILED_TO_CREATE_CONFIG_DIR,
+                    ));
                 }
             };
         }
@@ -330,7 +342,9 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
                 "[!] Failed to write configuration file {}: {e}",
                 settings.paths.config_file.display()
             );
-            return Err(process::ExitCode::from(11));
+            return Err(process::ExitCode::from(
+                defaults::exit_codes::FAILED_TO_WRITE_CONFIG_FILE,
+            ));
         };
 
         if fs::write(
@@ -340,7 +354,9 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         .is_err()
         {
             eprintln!("[!] Failed to write Slack alarm template file.");
-            return Err(process::ExitCode::from(12));
+            return Err(process::ExitCode::from(
+                defaults::exit_codes::FAILED_TO_WRITE_SLACK_ALARM_TEMPLATE,
+            ));
         }
 
         if fs::write(
@@ -350,7 +366,9 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         .is_err()
         {
             eprintln!("[!] Failed to write Slack restored template file.");
-            return Err(process::ExitCode::from(13));
+            return Err(process::ExitCode::from(
+                defaults::exit_codes::FAILED_TO_WRITE_SLACK_RESTORED_TEMPLATE,
+            ));
         }
 
         if fs::write(
@@ -360,7 +378,9 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         .is_err()
         {
             eprintln!("[!] Failed to write Batsign alarm template file.");
-            return Err(process::ExitCode::from(14));
+            return Err(process::ExitCode::from(
+                defaults::exit_codes::FAILED_TO_WRITE_BATSIGN_ALARM_TEMPLATE,
+            ));
         }
 
         if fs::write(
@@ -370,7 +390,9 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
         .is_err()
         {
             eprintln!("[!] Failed to write Batsign restored template file.");
-            return Err(process::ExitCode::from(15));
+            return Err(process::ExitCode::from(
+                defaults::exit_codes::FAILED_TO_WRITE_BATSIGN_RESTORED_TEMPLATE,
+            ));
         }
 
         println!(
