@@ -95,3 +95,44 @@ fn get_email_from_single_batsign_url(url: &str) -> Option<&str> {
 
     None
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_get_emails_from_batsign_urls() {
+        let vec = vec![
+            "https://batsign.me/at/test@example.com/token".to_string(),
+            "https://batsign.me/at/example@test.com/token".to_string(),
+            "https://batsign.me/at/blork/token".to_string(),
+            "https://batsign.me/".to_string(),
+            "".to_string(),
+        ];
+
+        let expected = Some("test@example.com, example@test.com".to_string());
+        let emails = super::get_emails_from_batsign_urls(&vec);
+        assert_eq!(emails, expected);
+    }
+
+    #[test]
+    fn test_get_email_from_single_batsign_url() {
+        let url = "https://batsign.me/at/test@example.com/token";
+        let email = super::get_email_from_single_batsign_url(url);
+        assert_eq!(email, Some("test@example.com"));
+
+        let url = "https://batsign.me/at/example@test.com/token";
+        let email = super::get_email_from_single_batsign_url(url);
+        assert_eq!(email, Some("example@test.com"));
+
+        let url = "https://batsign.me/at/blork/token";
+        let email = super::get_email_from_single_batsign_url(url);
+        assert_eq!(email, None);
+
+        let url = "https://batsign.me/";
+        let email = super::get_email_from_single_batsign_url(url);
+        assert_eq!(email, None);
+
+        let url = "";
+        let email = super::get_email_from_single_batsign_url(url);
+        assert_eq!(email, None);
+    }
+}

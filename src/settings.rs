@@ -495,3 +495,25 @@ fn trim_vec_of_strings(vec: &[String]) -> Vec<String> {
         .filter(|s| !s.is_empty())
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_trim_vec_of_strings() {
+        let input = vec![
+            "  https://example.com/webhook1  ".to_string(),
+            "https://example.com/webhook2".to_string(),
+            "   ".to_string(),
+            "".to_string(),
+            "https://example.com/webhook3   ".to_string(),
+        ];
+
+        let expected = vec![
+            "https://example.com/webhook1".to_string(),
+            "https://example.com/webhook2".to_string(),
+            "https://example.com/webhook3".to_string(),
+        ];
+
+        assert_eq!(super::trim_vec_of_strings(&input), expected);
+    }
+}
