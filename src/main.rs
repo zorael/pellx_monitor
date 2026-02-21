@@ -59,7 +59,115 @@ fn main() -> process::ExitCode {
     settings.print();
     println!();
 
+    run_dyn_monitor_loop(&settings);
     run_monitor_loop(settings)
+}
+
+fn run_dyn_monitor_loop(settings: &settings::Settings) -> process::ExitCode {
+    let gpio = match Gpio::new() {
+        Ok(g) => g,
+        Err(e) => {
+            eprintln!("[!] Failed to initialize GPIO: {e}");
+            return process::ExitCode::from(defaults::exit_codes::FAILED_TO_INITIALISE_GPIO);
+        }
+    };
+
+    let pin = match gpio.get(settings.gpio.pin_number) {
+        Ok(p) => p.into_input_pullup(),
+        Err(e) => {
+            eprintln!(
+                "[!] Failed to set mode of GPIO{}: {e}",
+                settings.gpio.pin_number
+            );
+            return process::ExitCode::from(defaults::exit_codes::FAILED_TO_SET_PIN_MODE);
+        }
+    };
+
+    let mut notifiers: Vec<Box<dyn notifications::Notifier>> = Vec::new();
+
+    if settings.slack.enabled {
+        for url in &settings.slack.urls {
+            let notifier = notifications::SlackNotifier::new(
+                url,
+                Some(settings.slack.notification_interval),
+                settings.slack.retry_interval,
+                &settings.slack.alarm_message_template_body,
+                &settings.slack.restored_message_template_body,
+            );
+
+            notifiers.push(Box::new(notifier));
+        }
+    }
+
+    let mut low_since: Option<Instant> = None;
+    let mut high_since: Option<Instant> = None;
+    let mut seen_high = false;
+
+    loop {
+        match pin.read() {
+            Level::Low => {
+                // OK (closed): pull-up is overridden, LOW
+                let start = low_since.get_or_insert_with(Instant::now);
+                let qualified = start.elapsed() >= settings.gpio.hold;
+
+                if settings.debug {
+                    println!("LOW");
+                }
+
+                if !qualified || !seen_high {
+                    thread::sleep(settings.gpio.poll_interval);
+                    continue;
+                }
+
+                high_since = None;
+
+                let ctx = notifications::Context {
+                    level: Level::Low,
+                    now: Instant::now(),
+                    dry_run: settings.dry_run,
+                };
+
+                for n in notifiers.iter_mut() {
+                    println!("{}", n.name());
+                    let (success_statuses, failure_statuses) = n.send_notification(&ctx);
+                    println!("{:?}", success_statuses);
+                    println!("{:?}", failure_statuses);
+                }
+            }
+            Level::High => {
+                let start = high_since.get_or_insert_with(Instant::now);
+                let qualified = start.elapsed() >= settings.gpio.hold;
+
+                if settings.debug {
+                    println!("HIGH");
+                }
+
+                if !qualified {
+                    thread::sleep(settings.gpio.poll_interval);
+                    continue;
+                }
+
+                low_since = None;
+
+                let ctx = notifications::Context {
+                    level: Level::High,
+                    now: Instant::now(),
+                    dry_run: settings.dry_run,
+                };
+
+                for n in notifiers.iter_mut() {
+                    println!("{}", n.name());
+                    let (success_statuses, failure_statuses) = n.send_notification(&ctx);
+                    println!("{:?}", success_statuses);
+                    println!("{:?}", failure_statuses);
+
+                    if !success_statuses.is_empty() {
+                        seen_high = true;
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// Runs the main monitor loop. This function will block indefinitely, monitoring the GPIO pin and sending notifications as configured.
