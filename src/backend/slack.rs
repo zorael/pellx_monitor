@@ -2,7 +2,7 @@ use reqwest::blocking::Client;
 use rppal::gpio::Level;
 use std::sync::Arc;
 
-use crate::notifications::Context;
+use crate::notify::Context;
 
 pub const ERROR_EMOJI: &str = ":x:";
 pub const SUCCESS_EMOJI: &str = ":white_check_mark:";

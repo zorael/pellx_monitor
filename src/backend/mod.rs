@@ -3,7 +3,7 @@ pub mod slack;
 
 use rppal::gpio::Level;
 
-use crate::notifications::Context;
+use crate::notify::Context;
 
 /// Backend owns everything it needs (urls, client, command, etc.).
 pub trait Backend {

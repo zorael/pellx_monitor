@@ -2,7 +2,7 @@ mod backend;
 mod cli;
 mod defaults;
 mod file_config;
-mod notifications;
+mod notify;
 mod settings;
 
 use clap::Parser;
@@ -104,13 +104,13 @@ fn main() -> process::ExitCode {
 }
 
 /// Builds the list of notifiers based on the resolved settings, creating instances of `TwoLevelNotifier` for each enabled backend (Slack and Batsign) with the appropriate configuration.
-fn build_notifiers(settings: &Settings) -> Vec<Box<dyn notifications::Notifier>> {
+fn build_notifiers(settings: &Settings) -> Vec<Box<dyn notify::Notifier>> {
     let client = Arc::new(Client::new());
-    let mut notifiers: Vec<Box<dyn notifications::Notifier>> = Vec::new();
+    let mut notifiers: Vec<Box<dyn notify::Notifier>> = Vec::new();
 
     if settings.slack.enabled {
         for url in &settings.slack.urls {
-            let slack = notifications::TwoLevelNotifier::new(
+            let slack = notify::TwoLevelNotifier::new(
                 backend::slack::SlackBackend::new(Arc::clone(&client), url),
                 Some(settings.slack.notification_interval),
                 settings.slack.retry_interval,
@@ -124,7 +124,7 @@ fn build_notifiers(settings: &Settings) -> Vec<Box<dyn notifications::Notifier>>
 
     if settings.batsign.enabled {
         for url in &settings.batsign.urls {
-            let batsign = notifications::TwoLevelNotifier::new(
+            let batsign = notify::TwoLevelNotifier::new(
                 backend::batsign::BatsignBackend::new(Arc::clone(&client), url),
                 Some(settings.batsign.notification_interval),
                 settings.batsign.retry_interval,
@@ -142,7 +142,7 @@ fn build_notifiers(settings: &Settings) -> Vec<Box<dyn notifications::Notifier>>
 /// The main loop that monitors the GPIO pin and sends notifications based on the configured notifiers and settings.
 fn run_loop(
     pin: InputPin,
-    mut notifiers: Vec<Box<dyn notifications::Notifier>>,
+    mut notifiers: Vec<Box<dyn notify::Notifier>>,
     settings: Settings,
 ) -> process::ExitCode {
     let mut low_since: Option<Instant> = None;
@@ -168,7 +168,7 @@ fn run_loop(
 
                 high_since = None;
 
-                let ctx = notifications::Context {
+                let ctx = notify::Context {
                     level: Level::Low,
                     now,
                     dry_run: settings.dry_run,
@@ -178,12 +178,12 @@ fn run_loop(
                     println!("{}", n.name());
 
                     match n.send_notification(&ctx) {
-                        notifications::NotificationResult::NotYetTime => {}
-                        notifications::NotificationResult::DryRun => {}
-                        notifications::NotificationResult::Success => {
+                        notify::NotificationResult::NotYetTime => {}
+                        notify::NotificationResult::DryRun => {}
+                        notify::NotificationResult::Success => {
                             println!("Success");
                         }
-                        notifications::NotificationResult::Failure(message) => {
+                        notify::NotificationResult::Failure(message) => {
                             println!("Failure: {message}");
                         }
                     }
@@ -204,7 +204,7 @@ fn run_loop(
 
                 low_since = None;
 
-                let ctx = notifications::Context {
+                let ctx = notify::context::Context {
                     level: Level::High,
                     now,
                     dry_run: settings.dry_run,
@@ -214,12 +214,12 @@ fn run_loop(
                     println!("{}", n.name());
 
                     match n.send_notification(&ctx) {
-                        notifications::NotificationResult::NotYetTime => {}
-                        notifications::NotificationResult::DryRun => {}
-                        notifications::NotificationResult::Success => {
+                        notify::NotificationResult::NotYetTime => {}
+                        notify::NotificationResult::DryRun => {}
+                        notify::NotificationResult::Success => {
                             println!("Success");
                         }
-                        notifications::NotificationResult::Failure(message) => {
+                        notify::NotificationResult::Failure(message) => {
                             println!("Failure: {message}");
                         }
                     }

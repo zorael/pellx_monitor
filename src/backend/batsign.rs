@@ -2,7 +2,7 @@ use reqwest::blocking::Client;
 use rppal::gpio::Level;
 use std::sync::Arc;
 
-use crate::notifications::Context;
+use crate::notify::Context;
 
 /// Defines the Batsign backend for sending notifications via email using the Batsign service.
 pub struct BatsignBackend {
