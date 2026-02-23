@@ -1,7 +1,7 @@
 use rppal::gpio::Level;
 use std::time::{Duration, Instant};
 
-use crate::backend;
+use crate::backend::Backend;
 
 /// Defines the `Notifier` trait.
 pub trait Notifier {
@@ -12,7 +12,7 @@ pub trait Notifier {
     fn send_notification(&mut self, ctx: &Context) -> NotificationResult;
 }
 
-impl<B: backend::Backend + 'static> Notifier for TwoLevelNotifier<B> {
+impl<B: Backend> Notifier for TwoLevelNotifier<B> {
     /// Returns the name of the backend used by this notifier.
     fn name(&self) -> &'static str {
         self.name()
@@ -118,7 +118,7 @@ impl LevelNotifier {
 }
 
 /// A notifier that manages two levels of notifications (alarm and restored) using a specified backend, handling the logic for when to send notifications based on the GPIO level and timing.
-pub struct TwoLevelNotifier<B: backend::Backend> {
+pub struct TwoLevelNotifier<B: Backend> {
     /// The backend used to send notifications (e.g., Slack or Batsign).
     backend: B,
 
@@ -129,8 +129,7 @@ pub struct TwoLevelNotifier<B: backend::Backend> {
     restored: LevelNotifier,
 }
 
-/// Implements the `Notifier` trait for `TwoLevelNotifier`, allowing it to send notifications based on the current GPIO level and the configured backend, while managing timing for repeats and retries.
-impl<B: backend::Backend> TwoLevelNotifier<B> {
+impl<B: Backend> TwoLevelNotifier<B> {
     /// Creates a new `TwoLevelNotifier`.
     pub fn new(
         backend: B,

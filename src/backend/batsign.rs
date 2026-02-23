@@ -14,6 +14,7 @@ pub struct BatsignBackend {
 }
 
 impl BatsignBackend {
+    /// Creates a new instance of the BatsignBackend with the provided HTTP client and Batsign URL.
     pub fn new(client: Arc<Client>, url: &str) -> Self {
         Self {
             client,

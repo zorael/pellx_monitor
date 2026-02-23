@@ -9,11 +9,15 @@ pub const SUCCESS_EMOJI: &str = ":white_check_mark:";
 
 /// Defines the Slack backend for sending notifications to a Slack channel.
 pub struct SlackBackend {
+    /// HTTP client used to send requests to the Slack API.
     client: Arc<Client>,
+
+    /// Slack webhook URL to which the notification will be sent.
     url: String,
 }
 
 impl SlackBackend {
+    /// Creates a new instance of the SlackBackend with the provided HTTP client and Slack webhook URL.
     pub fn new(client: Arc<Client>, url: &str) -> Self {
         Self {
             client,
