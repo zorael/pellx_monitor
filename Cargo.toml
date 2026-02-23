@@ -8,12 +8,12 @@ edition = "2024"
 [dependencies]
 chrono = { version = "0.4" }
 clap = { version = "4.5", features = ["derive"] }
-confy = "2.0.0"
-constcat = "0.6"
+confy = { version = "2.0.0" }
+constcat = { version = "0.6" }
 humantime = { version = "2.3" }
 humantime-serde = { version = "1.1" }
 reqwest = { version = "0.13", features = ["blocking", "json"] }
 rppal = { version = "0.22" }
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0.149"
-users = "0.11.0"
+serde_json = { version = "1.0.149" }
+users = {version = "0.11.0" }
