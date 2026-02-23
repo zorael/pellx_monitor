@@ -414,6 +414,11 @@ impl Settings {
             "Notification retry interval  {}",
             humantime::format_duration(self.batsign.retry_interval)
         );
+
+        if self.dry_run {
+            println!();
+            println!("(DRY RUN)");
+        }
     }
 
     /// Resolves the resource paths based on the config directory. This is used to set up the resource paths before loading resources from disk.
