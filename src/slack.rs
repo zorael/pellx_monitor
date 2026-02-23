@@ -1,12 +1,13 @@
-use reqwest::blocking::Client;
+/*use reqwest::blocking::Client;
 use std::time::Instant;
 
 use crate::notifications::NotificationState;
-use crate::settings::Settings;
+use crate::settings::Settings;*/
 
-pub const SLACK_ERROR_EMOJI: &str = ":x:";
-pub const SLACK_SUCCESS_EMOJI: &str = ":white_check_mark:";
+/*pub const SLACK_ERROR_EMOJI: &str = ":x:";
+pub const SLACK_SUCCESS_EMOJI: &str = ":white_check_mark:";*/
 
+/*
 /// Sends a Slack notification.
 fn send_slack_notification_impl(
     client: &Client,
@@ -73,3 +74,4 @@ pub fn send_slack_notification(
 
     Ok(())
 }
+*/

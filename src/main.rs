@@ -9,10 +9,12 @@ mod slack;
 use clap::Parser;
 use reqwest::blocking::Client;
 use rppal::gpio::{Gpio, Level};
+use std::sync::Arc;
 use std::time::Instant;
+//use std::time::Duration;
 use std::{fs, process, thread};
 
-use crate::notifications::NotificationState;
+//use crate::notifications::NotificationState;
 
 /// Program entrypoint.
 fn main() -> process::ExitCode {
@@ -59,11 +61,12 @@ fn main() -> process::ExitCode {
     settings.print();
     println!();
 
-    run_dyn_monitor_loop(&settings);
-    run_monitor_loop(settings)
+    //run_dyn_monitor_loop(&settings);
+    //run_monitor_loop(settings)
+    run_backend_loop(settings)
 }
 
-fn run_dyn_monitor_loop(settings: &settings::Settings) -> process::ExitCode {
+fn run_backend_loop(settings: settings::Settings) -> process::ExitCode {
     let gpio = match Gpio::new() {
         Ok(g) => g,
         Err(e) => {
@@ -83,20 +86,43 @@ fn run_dyn_monitor_loop(settings: &settings::Settings) -> process::ExitCode {
         }
     };
 
-    let mut notifiers: Vec<Box<dyn notifications::Notifier>> = Vec::new();
+    //let client = Client::new();
+    let client = Arc::new(Client::new());
+
+    let mut backends: Vec<Box<dyn notifications::Notifier>> = Vec::new();
 
     if settings.slack.enabled {
         for url in &settings.slack.urls {
-            let notifier = notifications::SlackNotifier::new(
+            let backend = notifications::TwoLevelNotifier::new(
+                notifications::SlackBackend,
                 url,
+                Arc::clone(&client),
                 Some(settings.slack.notification_interval),
                 settings.slack.retry_interval,
                 &settings.slack.alarm_message_template_body,
                 &settings.slack.restored_message_template_body,
             );
-
-            notifiers.push(Box::new(notifier));
+            backends.push(Box::new(backend));
         }
+    }
+
+    if settings.batsign.enabled {
+        for url in &settings.batsign.urls {
+            let backend = notifications::TwoLevelNotifier::new(
+                notifications::BatsignBackend,
+                url,
+                Arc::clone(&client),
+                Some(settings.batsign.notification_interval),
+                settings.batsign.retry_interval,
+                &settings.batsign.alarm_message_template_body,
+                &settings.batsign.restored_message_template_body,
+            );
+            backends.push(Box::new(backend));
+        }
+    }
+
+    if backends.is_empty() {
+        return process::ExitCode::FAILURE;
     }
 
     let mut low_since: Option<Instant> = None;
@@ -104,10 +130,11 @@ fn run_dyn_monitor_loop(settings: &settings::Settings) -> process::ExitCode {
     let mut seen_high = false;
 
     loop {
+        let now = Instant::now();
+
         match pin.read() {
             Level::Low => {
-                // OK (closed): pull-up is overridden, LOW
-                let start = low_since.get_or_insert_with(Instant::now);
+                let start = low_since.get_or_insert(now);
                 let qualified = start.elapsed() >= settings.gpio.hold;
 
                 if settings.debug {
@@ -123,19 +150,20 @@ fn run_dyn_monitor_loop(settings: &settings::Settings) -> process::ExitCode {
 
                 let ctx = notifications::Context {
                     level: Level::Low,
-                    now: Instant::now(),
+                    now,
+                    elapsed: start.elapsed(),
                     dry_run: settings.dry_run,
                 };
 
-                for n in notifiers.iter_mut() {
-                    println!("{}", n.name());
-                    let (success_statuses, failure_statuses) = n.send_notification(&ctx);
-                    println!("{:?}", success_statuses);
-                    println!("{:?}", failure_statuses);
+                for b in backends.iter_mut() {
+                    println!("{}", b.name());
+                    let results = b.send_notification(&ctx);
+                    println!("{}", results.num_succeeded);
+                    println!("{}", results.num_failed);
                 }
             }
             Level::High => {
-                let start = high_since.get_or_insert_with(Instant::now);
+                let start = high_since.get_or_insert(now);
                 let qualified = start.elapsed() >= settings.gpio.hold;
 
                 if settings.debug {
@@ -151,27 +179,152 @@ fn run_dyn_monitor_loop(settings: &settings::Settings) -> process::ExitCode {
 
                 let ctx = notifications::Context {
                     level: Level::High,
-                    now: Instant::now(),
+                    now,
+                    elapsed: start.elapsed(),
+                    dry_run: settings.dry_run,
+                };
+
+                for b in backends.iter_mut() {
+                    println!("{}", b.name());
+                    let results = b.send_notification(&ctx);
+                    println!("{}", results.num_succeeded);
+                    println!("{}", results.num_failed);
+
+                    if results.num_succeeded > 0 {
+                        // Only count this as having "seen" a HIGH if we
+                        // successfully sent at least one notification about it,
+                        // to avoid weird edge cases where the pin is HIGH but
+                        // we can't reach the notification endpoints for some reason.
+                        seen_high = true;
+                    }
+                }
+            }
+        }
+
+        thread::sleep(settings.gpio.poll_interval);
+    }
+}
+
+/*fn run_dyn_monitor_loop(settings: &settings::Settings) -> process::ExitCode {
+    let gpio = match Gpio::new() {
+        Ok(g) => g,
+        Err(e) => {
+            eprintln!("[!] Failed to initialize GPIO: {e}");
+            return process::ExitCode::from(defaults::exit_codes::FAILED_TO_INITIALISE_GPIO);
+        }
+    };
+
+    let pin = match gpio.get(settings.gpio.pin_number) {
+        Ok(p) => p.into_input_pullup(),
+        Err(e) => {
+            eprintln!(
+                "[!] Failed to set mode of GPIO{}: {e}",
+                settings.gpio.pin_number
+            );
+            return process::ExitCode::from(defaults::exit_codes::FAILED_TO_SET_PIN_MODE);
+        }
+    };
+
+    //let client = Client::new();
+    let client = Arc::new(Client::new());
+
+    let mut notifiers: Vec<Box<dyn notifications::Notifier>> = Vec::new();
+
+    if settings.slack.enabled {
+        for url in &settings.slack.urls {
+            let notifier = notifications::SlackNotifier::new(
+                url,
+                Arc::clone(&client),
+                Some(settings.slack.notification_interval),
+                settings.slack.retry_interval,
+                &settings.slack.alarm_message_template_body,
+                &settings.slack.restored_message_template_body,
+            );
+
+            notifiers.push(Box::new(notifier));
+        }
+    }
+
+    let mut low_since: Option<Instant> = None;
+    let mut high_since: Option<Instant> = None;
+    let mut seen_high = false;
+
+    loop {
+        let now = Instant::now();
+
+        match pin.read() {
+            Level::Low => {
+                let start = low_since.get_or_insert(now);
+                let qualified = start.elapsed() >= settings.gpio.hold;
+
+                if settings.debug {
+                    println!("LOW");
+                }
+
+                if !qualified || !seen_high {
+                    thread::sleep(settings.gpio.poll_interval);
+                    continue;
+                }
+
+                high_since = None;
+
+                let ctx = notifications::Context {
+                    level: Level::Low,
+                    now,
+                    elapsed: start.elapsed(),
                     dry_run: settings.dry_run,
                 };
 
                 for n in notifiers.iter_mut() {
                     println!("{}", n.name());
-                    let (success_statuses, failure_statuses) = n.send_notification(&ctx);
-                    println!("{:?}", success_statuses);
-                    println!("{:?}", failure_statuses);
+                    let results = n.send_notification(&ctx);
+                    println!("{}", results.num_succeeded);
+                    println!("{}", results.num_failed);
+                }
+            }
+            Level::High => {
+                let start = high_since.get_or_insert(now);
+                let qualified = start.elapsed() >= settings.gpio.hold;
 
-                    if !success_statuses.is_empty() {
+                if settings.debug {
+                    println!("HIGH");
+                }
+
+                if !qualified {
+                    thread::sleep(settings.gpio.poll_interval);
+                    continue;
+                }
+
+                low_since = None;
+
+                let ctx = notifications::Context {
+                    level: Level::High,
+                    now,
+                    elapsed: start.elapsed(),
+                    dry_run: settings.dry_run,
+                };
+
+                for n in notifiers.iter_mut() {
+                    println!("{}", n.name());
+                    let results = n.send_notification(&ctx);
+                    println!("{}", results.num_succeeded);
+                    println!("{}", results.num_failed);
+
+                    if results.num_succeeded > 0 {
+                        // Only count this as having "seen" a HIGH if we
+                        // successfully sent at least one notification about it,
+                        // to avoid weird edge cases where the pin is HIGH but
+                        // we can't reach the notification endpoints for some reason.
                         seen_high = true;
                     }
                 }
             }
         }
     }
-}
+}*/
 
-/// Runs the main monitor loop. This function will block indefinitely, monitoring the GPIO pin and sending notifications as configured.
-fn run_monitor_loop(settings: settings::Settings) -> process::ExitCode {
+// Runs the main monitor loop. This function will block indefinitely, monitoring the GPIO pin and sending notifications as configured.
+/*fn run_monitor_loop(settings: settings::Settings) -> process::ExitCode {
     let gpio = match Gpio::new() {
         Ok(g) => g,
         Err(e) => {
@@ -355,7 +508,7 @@ fn run_monitor_loop(settings: settings::Settings) -> process::ExitCode {
 
         thread::sleep(settings.gpio.poll_interval);
     }
-}
+}*/
 
 /// Initializes the settings by loading defaults, applying the config file, and then applying CLI overrides. If the `--save` flag is set, it saves the resolved configuration back to disk and exits.
 fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode> {

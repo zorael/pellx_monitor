@@ -1,4 +1,4 @@
-use reqwest::blocking::Client;
+/*use reqwest::blocking::Client;
 use std::time::Instant;
 
 use crate::notifications::NotificationState;
@@ -138,3 +138,4 @@ mod tests {
         assert_eq!(email, None);
     }
 }
+*/
