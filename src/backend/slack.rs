@@ -26,8 +26,8 @@ impl super::Backend for SlackBackend {
         url: &str,
         message: String,
     ) -> Result<reqwest::StatusCode, reqwest::Error> {
-        let v: serde_json::Value = serde_json::from_str(&message).expect("internal slack json");
-        let res = client.post(url).json(&v).send()?;
+        let json: serde_json::Value = serde_json::from_str(&message).expect("internal slack json");
+        let res = client.post(url).json(&json).send()?;
         Ok(res.status())
     }
 }
