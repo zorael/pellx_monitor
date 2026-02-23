@@ -4,6 +4,9 @@ use std::sync::Arc;
 
 /// Defines the Batsign backend for sending notifications via email using the Batsign service.
 pub struct BatsignBackend {
+    /// Unique identifier for the Batsign backend instance, used for logging and identification purposes.
+    id: usize,
+
     /// HTTP client used to send requests to the Batsign service.
     client: Arc<Client>,
 
@@ -13,8 +16,9 @@ pub struct BatsignBackend {
 
 impl BatsignBackend {
     /// Creates a new instance of the BatsignBackend with the provided HTTP client and Batsign URL.
-    pub fn new(client: Arc<Client>, url: &str) -> Self {
+    pub fn new(id: usize, client: Arc<Client>, url: &str) -> Self {
         Self {
+            id,
             client,
             url: url.to_owned(),
         }
@@ -23,8 +27,9 @@ impl BatsignBackend {
 
 impl super::Backend for BatsignBackend {
     /// Returns the name of the backend, which is "batsign" in this case.
-    fn name(&self) -> &'static str {
-        "batsign"
+    fn name(&self) -> String {
+        // This can be cached if it turns out to be a hotspot.
+        format!("batsign#{}", self.id)
     }
 
     /// Builds the message to be sent via Batsign.

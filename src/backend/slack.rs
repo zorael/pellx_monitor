@@ -7,6 +7,9 @@ pub const SUCCESS_EMOJI: &str = ":white_check_mark:";
 
 /// Defines the Slack backend for sending notifications to a Slack channel.
 pub struct SlackBackend {
+    /// Unique identifier for the Slack backend instance, used for logging and identification purposes.
+    id: usize,
+
     /// HTTP client used to send requests to the Slack API.
     client: Arc<Client>,
 
@@ -16,8 +19,9 @@ pub struct SlackBackend {
 
 impl SlackBackend {
     /// Creates a new instance of the SlackBackend with the provided HTTP client and Slack webhook URL.
-    pub fn new(client: Arc<Client>, url: &str) -> Self {
+    pub fn new(id: usize, client: Arc<Client>, url: &str) -> Self {
         Self {
+            id,
             client,
             url: url.to_owned(),
         }
@@ -26,8 +30,9 @@ impl SlackBackend {
 
 impl super::Backend for SlackBackend {
     /// Returns the name of the backend, which is "slack" in this case.
-    fn name(&self) -> &'static str {
-        "slack"
+    fn name(&self) -> String {
+        // This can be cached if it turns out to be a hotspot.
+        format!("slack#{}", self.id)
     }
 
     /// Builds the message to be sent via Slack by formatting the provided template with an appropriate emoji based on the GPIO level (error emoji for high level and success emoji for low level).

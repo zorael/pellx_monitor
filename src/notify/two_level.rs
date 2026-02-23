@@ -23,7 +23,7 @@ pub struct TwoLevelNotifier<B: Backend> {
 
 impl<B: Backend> Notifier for TwoLevelNotifier<B> {
     /// Returns the name of the backend used by this notifier.
-    fn name(&self) -> &'static str {
+    fn name(&self) -> String {
         self.name()
     }
 
@@ -52,7 +52,7 @@ impl<B: Backend> TwoLevelNotifier<B> {
     }
 
     /// Returns the name of the backend used by this notifier.
-    pub fn name(&self) -> &'static str {
+    pub fn name(&self) -> String {
         self.backend.name()
     }
 

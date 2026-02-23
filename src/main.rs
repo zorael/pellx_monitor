@@ -109,9 +109,9 @@ fn build_notifiers(settings: &Settings) -> Vec<Box<dyn notify::Notifier>> {
     let mut notifiers: Vec<Box<dyn notify::Notifier>> = Vec::new();
 
     if settings.slack.enabled {
-        for url in &settings.slack.urls {
+        for (i, url) in settings.slack.urls.iter().enumerate() {
             let slack = notify::TwoLevelNotifier::new(
-                backend::slack::SlackBackend::new(Arc::clone(&client), url),
+                backend::slack::SlackBackend::new(i, Arc::clone(&client), url),
                 Some(settings.slack.notification_interval),
                 settings.slack.retry_interval,
                 &settings.slack.alarm_message_template_body,
@@ -124,9 +124,9 @@ fn build_notifiers(settings: &Settings) -> Vec<Box<dyn notify::Notifier>> {
     }
 
     if settings.batsign.enabled {
-        for url in &settings.batsign.urls {
+        for (i, url) in settings.batsign.urls.iter().enumerate() {
             let batsign = notify::TwoLevelNotifier::new(
-                backend::batsign::BatsignBackend::new(Arc::clone(&client), url),
+                backend::batsign::BatsignBackend::new(i, Arc::clone(&client), url),
                 Some(settings.batsign.notification_interval),
                 settings.batsign.retry_interval,
                 &settings.batsign.alarm_message_template_body,
@@ -182,10 +182,10 @@ fn run_loop(
                         notify::NotificationResult::NotYetTime => {}
                         notify::NotificationResult::DryRun => {}
                         notify::NotificationResult::Success => {
-                            println!("Success");
+                            println!("{}: success", n.name());
                         }
                         notify::NotificationResult::Failure(message) => {
-                            println!("Failure: {message}");
+                            println!("{}: failure: {message}", n.name());
                         }
                     }
                 }
@@ -217,10 +217,10 @@ fn run_loop(
                         notify::NotificationResult::NotYetTime => {}
                         notify::NotificationResult::DryRun => {}
                         notify::NotificationResult::Success => {
-                            println!("Success");
+                            println!("{}: success", n.name());
                         }
                         notify::NotificationResult::Failure(message) => {
-                            println!("Failure: {message}");
+                            println!("{}: failure: {message}", n.name());
                         }
                     }
                 }
