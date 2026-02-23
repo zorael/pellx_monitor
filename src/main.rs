@@ -103,6 +103,7 @@ fn main() -> process::ExitCode {
     run_loop(pin, notifiers, settings)
 }
 
+/// Builds the list of notifiers based on the resolved settings, creating instances of `TwoLevelNotifier` for each enabled backend (Slack and Batsign) with the appropriate configuration.
 fn build_notifiers(
     settings: &Settings,
     client: Arc<Client>,
@@ -144,6 +145,7 @@ fn build_notifiers(
     notifiers
 }
 
+/// The main loop that monitors the GPIO pin and sends notifications based on the configured notifiers and settings.
 fn run_loop(
     pin: InputPin,
     mut notifiers: Vec<Box<dyn notifications::Notifier>>,

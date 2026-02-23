@@ -1,17 +1,21 @@
 use reqwest::blocking::Client;
 use rppal::gpio::Level;
 
+/// Defines the Batsign backend for sending notifications via email using the Batsign service.
 pub struct BatsignBackend;
 
 impl super::Backend for BatsignBackend {
+    /// Returns the name of the backend, which is "batsign" in this case.
     fn name(&self) -> &'static str {
         "batsign"
     }
 
+    /// Builds the message to be sent via Batsign, which in this case is just the provided template without any additional formatting.
     fn build_message(&self, _level: Level, template: &str) -> String {
         template.to_owned()
     }
 
+    /// Sends a notification via the Batsign backend by making a POST request to the specified URL with the message as the body.
     fn send_via_backend(
         &self,
         client: &Client,

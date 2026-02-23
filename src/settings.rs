@@ -277,6 +277,7 @@ pub struct PathBufs {
 }
 
 impl Default for PathBufs {
+    /// Default values for the resource paths, which are empty and will be resolved at runtime based on the config directory.
     fn default() -> Self {
         Self {
             config_dir: PathBuf::new(),
