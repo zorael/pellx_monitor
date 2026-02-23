@@ -2,9 +2,6 @@ use reqwest::blocking::Client;
 use rppal::gpio::Level;
 use std::sync::Arc;
 
-pub const ERROR_EMOJI: &str = ":x:";
-pub const SUCCESS_EMOJI: &str = ":white_check_mark:";
-
 /// Defines the Slack backend for sending notifications to a Slack channel.
 pub struct SlackBackend {
     /// Unique identifier for the Slack backend instance, used for logging and identification purposes.
@@ -36,13 +33,8 @@ impl super::Backend for SlackBackend {
     }
 
     /// Builds the message to be sent via Slack by formatting the provided template with an appropriate emoji based on the GPIO level (error emoji for high level and success emoji for low level).
-    fn build_message(&self, level: Level, template: &str) -> String {
-        let emoji = match level {
-            Level::High => ERROR_EMOJI,
-            Level::Low => SUCCESS_EMOJI,
-        };
-
-        serde_json::json!({ "text": format!("{emoji} {template}") }).to_string()
+    fn build_message(&self, _level: Level, template: &str) -> String {
+        serde_json::json!({ "text": format!("{template}") }).to_string()
     }
 
     /// Sends a notification via the Slack backend by making a POST request to the specified URL with the message as a JSON payload.

@@ -23,11 +23,11 @@ pub mod slack {
     pub const RESTORED_MESSAGE_TEMPLATE_FILENAME: &str = "slack_restored.txt";
 
     /// Default Slack alarm message template.
-    pub const ALARM_MESSAGE_TEMPLATE_BODY: &str =
-        "Pellets burner has been in an error state for {elapsed}.";
+    pub const ALARM_MESSAGE_TEMPLATE_BODY: &str = ":x: Pellets burner is in an error state.";
 
     /// Default Slack restored message template.
-    pub const RESTORED_MESSAGE_TEMPLATE_BODY: &str = "Pellets burner has been restored.";
+    pub const RESTORED_MESSAGE_TEMPLATE_BODY: &str =
+        ":white_check_mark: Pellets burner has been restored.";
 
     /// Default minimum time between sending Slack notifications.
     pub const NOTIFICATION_INTERVAL: Duration = Duration::from_secs(12 * 3600); // 12 hours
@@ -47,7 +47,7 @@ pub mod batsign {
 
     /// Default alarm message template.
     pub const ALARM_MESSAGE_TEMPLATE_BODY: &str =
-        "Subject: PellX Alarm\nPellets burner has been in an error state for {elapsed}.\n";
+        "Subject: PellX Alarm\nPellets burner is in an error state.\n";
 
     /// Default restored message template.
     pub const RESTORED_MESSAGE_TEMPLATE_BODY: &str =
