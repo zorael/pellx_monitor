@@ -2,8 +2,6 @@ use reqwest::blocking::Client;
 use rppal::gpio::Level;
 use std::sync::Arc;
 
-use crate::notify::Context;
-
 pub const ERROR_EMOJI: &str = ":x:";
 pub const SUCCESS_EMOJI: &str = ":white_check_mark:";
 
@@ -33,7 +31,7 @@ impl super::Backend for SlackBackend {
     }
 
     /// Builds the message to be sent via Slack by formatting the provided template with an appropriate emoji based on the GPIO level (error emoji for high level and success emoji for low level).
-    fn build_message(&self, level: Level, template: &str, _ctx: &Context) -> String {
+    fn build_message(&self, level: Level, template: &str) -> String {
         let emoji = match level {
             Level::High => ERROR_EMOJI,
             Level::Low => SUCCESS_EMOJI,
@@ -43,7 +41,7 @@ impl super::Backend for SlackBackend {
     }
 
     /// Sends a notification via the Slack backend by making a POST request to the specified URL with the message as a JSON payload.
-    fn send_message(&mut self, message: &str, _ctx: &Context) -> Result<(), String> {
+    fn send_message(&mut self, message: &str) -> Result<(), String> {
         let json: serde_json::Value = serde_json::from_str(message).expect("internal slack json");
 
         match self.client.post(&self.url).json(&json).send() {

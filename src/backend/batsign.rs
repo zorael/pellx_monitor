@@ -2,8 +2,6 @@ use reqwest::blocking::Client;
 use rppal::gpio::Level;
 use std::sync::Arc;
 
-use crate::notify::Context;
-
 /// Defines the Batsign backend for sending notifications via email using the Batsign service.
 pub struct BatsignBackend {
     /// HTTP client used to send requests to the Batsign service.
@@ -30,12 +28,12 @@ impl super::Backend for BatsignBackend {
     }
 
     /// Builds the message to be sent via Batsign.
-    fn build_message(&self, _level: Level, template: &str, _ctx: &Context) -> String {
+    fn build_message(&self, _level: Level, template: &str) -> String {
         template.to_owned()
     }
 
     /// Sends a notification via the Batsign backend by making a POST request to the specified URL with the message as the body.
-    fn send_message(&mut self, message: &str, _ctx: &Context) -> Result<(), String> {
+    fn send_message(&mut self, message: &str) -> Result<(), String> {
         match self.client.post(&self.url).body(message.to_owned()).send() {
             Ok(resp) if resp.status().is_success() => Ok(()),
             Ok(resp) => Err(format!("HTTP {}", resp.status())),

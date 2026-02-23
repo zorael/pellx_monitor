@@ -62,16 +62,14 @@ impl<B: Backend> TwoLevelNotifier<B> {
             return NotificationResult::NotYetTime;
         }
 
-        let msg = self
-            .backend
-            .build_message(ln.level, &ln.message_template, ctx);
+        let msg = self.backend.build_message(ln.level, &ln.message_template);
 
         if ctx.dry_run {
             println!("[{}] DRY RUN:\n{}\n", self.backend.name(), msg);
             return NotificationResult::DryRun;
         }
 
-        match self.backend.send_message(&msg, ctx) {
+        match self.backend.send_message(&msg) {
             Ok(()) => {
                 ln.record_success(ctx.now);
                 NotificationResult::Success
