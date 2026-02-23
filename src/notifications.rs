@@ -1,8 +1,5 @@
-use std::sync::Arc;
-use std::time::{Duration, Instant};
-
-use reqwest::blocking::Client;
 use rppal::gpio::Level;
+use std::time::{Duration, Instant};
 
 use crate::backend;
 
@@ -11,8 +8,20 @@ pub trait Notifier {
     /// Returns the name of the notifier, which is typically the name of the backend it uses (e.g., "slack" or "batsign").
     fn name(&self) -> &'static str;
 
-    /// Sends a notification based on the current GPIO level and the configured backend, while managing timing for repeats and retries.
+    /// Sends a notification.
     fn send_notification(&mut self, ctx: &Context) -> NotificationResult;
+}
+
+impl<B: backend::Backend + 'static> Notifier for TwoLevelNotifier<B> {
+    /// Returns the name of the backend used by this notifier.
+    fn name(&self) -> &'static str {
+        self.name()
+    }
+
+    /// Sends a notification based on the current GPIO level and the configured backend, while managing timing for repeats and retries.
+    fn send_notification(&mut self, ctx: &Context) -> NotificationResult {
+        TwoLevelNotifier::send_notification(self, ctx)
+    }
 }
 
 /// Context for sending notifications, containing the current GPIO level, timestamp, and whether it's a dry run.
@@ -36,13 +45,10 @@ pub enum NotificationResult {
     DryRun,
 
     /// Indicates that the notification was successfully sent, containing the HTTP status code returned by the backend.
-    Success(reqwest::StatusCode),
+    Success, //(reqwest::StatusCode),
 
     /// Indicates that the notification failed to send, containing the HTTP status code returned by the backend.
-    Failure(reqwest::StatusCode),
-
-    /// Indicates that there was an error while trying to send the notification, containing the error returned by the reqwest client.
-    Error(reqwest::Error),
+    Failure(String), //(reqwest::StatusCode),
 }
 
 /// Internal struct to track the state of notifications for a specific GPIO level, including timing for repeats and retries.
@@ -66,29 +72,28 @@ struct LevelNotifier {
     retry_interval: Duration,
 }
 
-/// Implements a one-level notifier that can be used for either the alarm or restored state, tracking its own timing for when to send notifications and when to retry after failures.
 impl LevelNotifier {
-    /// Creates a new `LevelNotifier` with the specified parameters.
+    /// Creates a new `LevelNotifier` with the specified GPIO level, message template, repeat interval, and retry interval.
     fn new(
         level: Level,
         message_template: &str,
-        repeat_interval: Option<Duration>,
-        retry_interval: Duration,
+        repeat: Option<Duration>,
+        retry: Duration,
     ) -> Self {
         Self {
             level,
             message_template: message_template.to_string(),
             last_sent: None,
             last_failed: None,
-            repeat_interval,
-            retry_interval,
+            repeat_interval: repeat,
+            retry_interval: retry,
         }
     }
 
     /// Determines whether a notification should be sent at the current time, based on the last sent and failed timestamps, as well as the configured repeat and retry intervals.
     fn should_send_now(&self, now: Instant) -> bool {
-        if let Some(last_failed) = self.last_failed
-            && now.duration_since(last_failed) < self.retry_interval
+        if let Some(t) = self.last_failed
+            && now.duration_since(t) < self.retry_interval
         {
             return false;
         }
@@ -117,12 +122,6 @@ pub struct TwoLevelNotifier<B: backend::Backend> {
     /// The backend used to send notifications (e.g., Slack or Batsign).
     backend: B,
 
-    /// The URL to send notifications to, which is specific to the backend being used.
-    url: String,
-
-    /// The HTTP client used to send requests to the backend, shared across both levels of notifications.
-    client: Arc<Client>,
-
     /// The `LevelNotifier` responsible for managing notifications when the GPIO level is High (alarm state).
     alarm: LevelNotifier,
 
@@ -135,8 +134,6 @@ impl<B: backend::Backend> TwoLevelNotifier<B> {
     /// Creates a new `TwoLevelNotifier`.
     pub fn new(
         backend: B,
-        url: &str,
-        client: Arc<Client>,
         repeat_interval: Option<Duration>,
         retry_interval: Duration,
         alarm_template: &str,
@@ -144,65 +141,46 @@ impl<B: backend::Backend> TwoLevelNotifier<B> {
     ) -> Self {
         Self {
             backend,
-            url: url.to_owned(),
-            client,
             alarm: LevelNotifier::new(Level::High, alarm_template, repeat_interval, retry_interval),
             restored: LevelNotifier::new(Level::Low, restored_template, None, retry_interval),
         }
     }
 
-    /// Internal helper function to send a notification for a specific level, handling the logic for whether to send based on timing and whether it's a dry run, and recording the result of the attempt.
-    fn send_one(
-        backend: &B,
-        client: Arc<Client>,
-        url: &str,
-        ctx: &Context,
-        ln: &mut LevelNotifier,
-    ) -> NotificationResult {
-        if !ln.should_send_now(ctx.now) {
-            return NotificationResult::NotYetTime;
-        }
-
-        let message = backend.build_message(ln.level, &ln.message_template);
-
-        if ctx.dry_run {
-            println!("[{}] DRY RUN to {}:\n{}\n", backend.name(), url, message);
-            return NotificationResult::DryRun;
-        }
-
-        match backend.send_via_backend(&client, url, message) {
-            Ok(status) if status.is_success() => {
-                ln.record_success(ctx.now);
-                NotificationResult::Success(status)
-            }
-            Ok(status) => {
-                eprintln!("[!] {} returned HTTP {}", backend.name(), status);
-                ln.record_failure(ctx.now);
-                NotificationResult::Failure(status)
-            }
-            Err(e) => {
-                eprintln!("[!] Could not reach {}: {e}", backend.name());
-                ln.record_failure(ctx.now);
-                NotificationResult::Error(e)
-            }
-        }
-    }
-}
-
-/// Implements the `Notifier` trait for `TwoLevelNotifier`, allowing it to send notifications based on the current GPIO level and the configured backend, while managing timing for repeats and retries.
-impl<B: backend::Backend> Notifier for TwoLevelNotifier<B> {
     /// Returns the name of the backend used by this notifier.
-    fn name(&self) -> &'static str {
+    pub fn name(&self) -> &'static str {
         self.backend.name()
     }
 
-    /// Sends a notification based on the current GPIO level and the configured backend, while managing timing for repeats and retries. It determines which level notifier to use (alarm or restored) based on the GPIO level in the context, and then calls the internal `send_one` function to handle the sending logic.
-    fn send_notification(&mut self, ctx: &Context) -> NotificationResult {
+    /// Sends a notification based on the current GPIO level and the configured backend, while managing timing for repeats and retries.
+    pub fn send_notification(&mut self, ctx: &Context) -> NotificationResult {
         let ln = match ctx.level {
             Level::Low => &mut self.restored,
             Level::High => &mut self.alarm,
         };
 
-        TwoLevelNotifier::<B>::send_one(&self.backend, Arc::clone(&self.client), &self.url, ctx, ln)
+        if !ln.should_send_now(ctx.now) {
+            return NotificationResult::NotYetTime;
+        }
+
+        let msg = self
+            .backend
+            .build_message(ln.level, &ln.message_template, ctx);
+
+        if ctx.dry_run {
+            println!("[{}] DRY RUN:\n{}\n", self.backend.name(), msg);
+            return NotificationResult::DryRun;
+        }
+
+        match self.backend.send_message(&msg, ctx) {
+            Ok(()) => {
+                ln.record_success(ctx.now);
+                NotificationResult::Success
+            }
+            Err(e) => {
+                eprintln!("[!] {} failed: {e}", self.backend.name());
+                ln.record_failure(ctx.now);
+                NotificationResult::Failure(e)
+            }
+        }
     }
 }

@@ -93,7 +93,7 @@ fn main() -> process::ExitCode {
         }
     };
 
-    let notifiers = build_notifiers(&settings, Arc::new(Client::new()));
+    let notifiers = build_notifiers(&settings);
 
     if notifiers.is_empty() && !settings.dry_run {
         eprintln!("[!] No notifiers are configured.");
@@ -104,41 +104,35 @@ fn main() -> process::ExitCode {
 }
 
 /// Builds the list of notifiers based on the resolved settings, creating instances of `TwoLevelNotifier` for each enabled backend (Slack and Batsign) with the appropriate configuration.
-fn build_notifiers(
-    settings: &Settings,
-    client: Arc<Client>,
-) -> Vec<Box<dyn notifications::Notifier>> {
+fn build_notifiers(settings: &Settings) -> Vec<Box<dyn notifications::Notifier>> {
+    let client = Arc::new(Client::new());
     let mut notifiers: Vec<Box<dyn notifications::Notifier>> = Vec::new();
 
     if settings.slack.enabled {
         for url in &settings.slack.urls {
-            let notifier = notifications::TwoLevelNotifier::new(
-                backend::slack::SlackBackend,
-                url,
-                Arc::clone(&client),
+            let slack = notifications::TwoLevelNotifier::new(
+                backend::slack::SlackBackend::new(Arc::clone(&client), url),
                 Some(settings.slack.notification_interval),
                 settings.slack.retry_interval,
                 &settings.slack.alarm_message_template_body,
                 &settings.slack.restored_message_template_body,
             );
 
-            notifiers.push(Box::new(notifier));
+            notifiers.push(Box::new(slack));
         }
     }
 
     if settings.batsign.enabled {
         for url in &settings.batsign.urls {
-            let notifier = notifications::TwoLevelNotifier::new(
-                backend::batsign::BatsignBackend,
-                url,
-                Arc::clone(&client),
+            let batsign = notifications::TwoLevelNotifier::new(
+                backend::batsign::BatsignBackend::new(Arc::clone(&client), url),
                 Some(settings.batsign.notification_interval),
                 settings.batsign.retry_interval,
                 &settings.batsign.alarm_message_template_body,
                 &settings.batsign.restored_message_template_body,
             );
 
-            notifiers.push(Box::new(notifier));
+            notifiers.push(Box::new(batsign));
         }
     }
 
@@ -186,14 +180,11 @@ fn run_loop(
                     match n.send_notification(&ctx) {
                         notifications::NotificationResult::NotYetTime => {}
                         notifications::NotificationResult::DryRun => {}
-                        notifications::NotificationResult::Success(status) => {
-                            println!("Success: HTTP {}", status);
+                        notifications::NotificationResult::Success => {
+                            println!("Success");
                         }
-                        notifications::NotificationResult::Failure(status) => {
-                            println!("Failure: HTTP {}", status);
-                        }
-                        notifications::NotificationResult::Error(e) => {
-                            println!("Error: {e}");
+                        notifications::NotificationResult::Failure(message) => {
+                            println!("Failure: {message}");
                         }
                     }
                 }
@@ -225,14 +216,11 @@ fn run_loop(
                     match n.send_notification(&ctx) {
                         notifications::NotificationResult::NotYetTime => {}
                         notifications::NotificationResult::DryRun => {}
-                        notifications::NotificationResult::Success(status) => {
-                            println!("Success: HTTP {}", status);
+                        notifications::NotificationResult::Success => {
+                            println!("Success");
                         }
-                        notifications::NotificationResult::Failure(status) => {
-                            println!("Failure: HTTP {}", status);
-                        }
-                        notifications::NotificationResult::Error(e) => {
-                            println!("Error: {e}");
+                        notifications::NotificationResult::Failure(message) => {
+                            println!("Failure: {message}");
                         }
                     }
                 }
