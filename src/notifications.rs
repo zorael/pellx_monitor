@@ -118,7 +118,7 @@ impl<B: backend::Backend> TwoLevelNotifier<B> {
 
         if ctx.dry_run {
             println!("[{}] DRY RUN to {}:\n{}\n", backend.name(), url, message);
-            return NotificationResult::DryRun
+            return NotificationResult::DryRun;
         }
 
         match backend.send_via_backend(&client, url, message) {
