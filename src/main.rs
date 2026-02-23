@@ -151,15 +151,17 @@ fn run_backend_loop(settings: settings::Settings) -> process::ExitCode {
                 let ctx = notifications::Context {
                     level: Level::Low,
                     now,
-                    elapsed: start.elapsed(),
+                    //elapsed: start.elapsed(),
                     dry_run: settings.dry_run,
                 };
 
                 for b in backends.iter_mut() {
                     println!("{}", b.name());
-                    let results = b.send_notification(&ctx);
-                    println!("{}", results.num_succeeded);
-                    println!("{}", results.num_failed);
+
+                    if let Some(results) = b.send_notification(&ctx) {
+                        println!("{}", results.num_succeeded);
+                        println!("{}", results.num_failed);
+                    }
                 }
             }
             Level::High => {
@@ -180,22 +182,24 @@ fn run_backend_loop(settings: settings::Settings) -> process::ExitCode {
                 let ctx = notifications::Context {
                     level: Level::High,
                     now,
-                    elapsed: start.elapsed(),
+                    //elapsed: start.elapsed(),
                     dry_run: settings.dry_run,
                 };
 
                 for b in backends.iter_mut() {
                     println!("{}", b.name());
-                    let results = b.send_notification(&ctx);
-                    println!("{}", results.num_succeeded);
-                    println!("{}", results.num_failed);
 
-                    if results.num_succeeded > 0 {
-                        // Only count this as having "seen" a HIGH if we
-                        // successfully sent at least one notification about it,
-                        // to avoid weird edge cases where the pin is HIGH but
-                        // we can't reach the notification endpoints for some reason.
-                        seen_high = true;
+                    if let Some(results) = b.send_notification(&ctx) {
+                        println!("{}", results.num_succeeded);
+                        println!("{}", results.num_failed);
+
+                        if results.num_succeeded > 0 {
+                            // Only count this as having "seen" a HIGH if we
+                            // successfully sent at least one notification about it,
+                            // to avoid weird edge cases where the pin is HIGH but
+                            // we can't reach the notification endpoints for some reason.
+                            seen_high = true;
+                        }
                     }
                 }
             }

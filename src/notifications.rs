@@ -4,14 +4,80 @@ use std::time::{Duration, Instant};
 use reqwest::blocking::Client;
 use rppal::gpio::Level;
 
-use crate::settings::Settings;
+pub trait Notifier {
+    fn name(&self) -> &'static str;
+    fn send_notification(&mut self, ctx: &Context) -> Option<NotificationResults>;
+}
+
+#[derive(Debug)]
+pub struct Context {
+    pub level: Level,
+    pub now: Instant,
+    pub dry_run: bool,
+}
+
+#[derive(Default)]
+pub struct NotificationResults {
+    pub num_succeeded: usize,
+    pub num_failed: usize,
+}
+
+struct LevelNotifier {
+    level: Level,
+    message_template: String,
+    last_sent: Option<Instant>,
+    last_failed: Option<Instant>,
+    repeat_interval: Option<Duration>,
+    retry_interval: Duration,
+}
+
+impl LevelNotifier {
+    fn new(
+        level: Level,
+        message_template: &str,
+        repeat_interval: Option<Duration>,
+        retry_interval: Duration,
+    ) -> Self {
+        Self {
+            level,
+            message_template: message_template.to_string(),
+            last_sent: None,
+            last_failed: None,
+            repeat_interval,
+            retry_interval,
+        }
+    }
+
+    fn should_send_now(&self, now: Instant) -> bool {
+        if let Some(last_failed) = self.last_failed
+            && now.duration_since(last_failed) < self.retry_interval
+        {
+            return false;
+        }
+
+        match (self.last_sent, self.repeat_interval) {
+            (None, _) => true,
+            (Some(_), None) => false,
+            (Some(t), Some(iv)) => now.duration_since(t) >= iv,
+        }
+    }
+
+    fn record_success(&mut self, now: Instant) {
+        self.last_sent = Some(now);
+        self.last_failed = None;
+    }
+
+    fn record_failure(&mut self, now: Instant) {
+        self.last_failed = Some(now);
+    }
+}
 
 pub trait Backend {
     fn name(&self) -> &'static str;
 
     fn build_message(&self, level: Level, template: &str) -> String;
 
-    fn send(
+    fn send_via_backend(
         &self,
         client: &Client,
         url: &str,
@@ -38,7 +104,7 @@ impl Backend for SlackBackend {
         serde_json::json!({ "text": format!("{emoji} {template}") }).to_string()
     }
 
-    fn send(
+    fn send_via_backend(
         &self,
         client: &Client,
         url: &str,
@@ -61,7 +127,7 @@ impl Backend for BatsignBackend {
         template.to_owned()
     }
 
-    fn send(
+    fn send_via_backend(
         &self,
         client: &Client,
         url: &str,
@@ -114,13 +180,12 @@ impl<B: Backend> TwoLevelNotifier<B> {
 
         if ctx.dry_run {
             println!("[{}] DRY RUN to {}:\n{}\n", backend.name(), url, message);
-            println!("{:?}", ctx.elapsed);
             return None;
         }
 
         let mut results = NotificationResults::default();
 
-        match backend.send(&client, url, message) {
+        match backend.send_via_backend(&client, url, message) {
             Ok(status) if status.is_success() => {
                 results.num_succeeded += 1;
                 ln.record_success(ctx.now);
@@ -146,83 +211,13 @@ impl<B: Backend> Notifier for TwoLevelNotifier<B> {
         self.backend.name()
     }
 
-    fn send_notification(&mut self, ctx: &Context) -> NotificationResults {
+    fn send_notification(&mut self, ctx: &Context) -> Option<NotificationResults> {
         let ln = match ctx.level {
             Level::Low => &mut self.restored,
             Level::High => &mut self.alarm,
         };
 
-        TwoLevelNotifier::send_one(&self.backend, Arc::clone(&self.client), &self.url, ctx, ln)
-            .unwrap_or_default()
-    }
-}
-
-#[derive(Debug)]
-pub struct Context {
-    pub level: Level,
-    pub now: Instant,
-    pub elapsed: Duration,
-    pub dry_run: bool,
-}
-
-#[derive(Default)]
-pub struct NotificationResults {
-    pub num_succeeded: usize,
-    pub num_failed: usize,
-}
-
-pub trait Notifier {
-    fn name(&self) -> &'static str;
-    fn send_notification(&mut self, ctx: &Context) -> NotificationResults;
-}
-
-struct LevelNotifier {
-    level: Level,
-    message_template: String,
-    last_sent: Option<Instant>,
-    last_failed: Option<Instant>,
-    repeat_interval: Option<Duration>,
-    retry_interval: Duration,
-}
-
-impl LevelNotifier {
-    fn new(
-        level: Level,
-        message_template: &str,
-        repeat_interval: Option<Duration>,
-        retry_interval: Duration,
-    ) -> Self {
-        Self {
-            level,
-            message_template: message_template.to_string(),
-            last_sent: None,
-            last_failed: None,
-            repeat_interval,
-            retry_interval,
-        }
-    }
-
-    fn should_send_now(&self, now: Instant) -> bool {
-        if let Some(last_failed) = self.last_failed
-            && now.duration_since(last_failed) < self.retry_interval
-        {
-            return false;
-        }
-
-        match (self.last_sent, self.repeat_interval) {
-            (None, _) => true,
-            (Some(_), None) => false,
-            (Some(t), Some(iv)) => now.duration_since(t) >= iv,
-        }
-    }
-
-    fn record_success(&mut self, now: Instant) {
-        self.last_sent = Some(now);
-        self.last_failed = None;
-    }
-
-    fn record_failure(&mut self, now: Instant) {
-        self.last_failed = Some(now);
+        TwoLevelNotifier::<B>::send_one(&self.backend, Arc::clone(&self.client), &self.url, ctx, ln)
     }
 }
 
@@ -475,6 +470,7 @@ impl NotificationState {
     }
 }*/
 
+/*
 /// Constructs a notification message body.
 pub fn format_notification_message(template: &str, settings: &Settings, since: &Instant) -> String {
     template
@@ -491,7 +487,7 @@ pub fn format_notification_message(template: &str, settings: &Settings, since: &
             "{hold}",
             &humantime::format_duration(settings.gpio.hold).to_string(),
         )
-}
+}*/
 
 /*
 /// Determines whether a notification should be sent based on the current time, settings, and notification state.
