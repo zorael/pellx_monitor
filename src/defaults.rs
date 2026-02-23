@@ -90,6 +90,7 @@ pub mod exit_codes {
     pub const FAILED_TO_WRITE_BATSIGN_ALARM_TEMPLATE: u8 = 14;
     pub const FAILED_TO_WRITE_BATSIGN_RESTORED_TEMPLATE: u8 = 15;
     pub const CONFIGURATION_ERROR: u8 = 20;
+    pub const NO_NOTIFIERS_CONFIGURED: u8 = 21;
     pub const FAILED_TO_INITIALISE_GPIO: u8 = 30;
     pub const FAILED_TO_SET_PIN_MODE: u8 = 31;
     pub const FAILED_TO_RESOLVE_CONFIG_DIR: u8 = 40;

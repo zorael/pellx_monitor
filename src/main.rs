@@ -7,10 +7,22 @@ mod settings;
 
 use clap::Parser;
 use reqwest::blocking::Client;
-use rppal::gpio::{Gpio, Level};
+use rppal::gpio::{Gpio, InputPin, Level};
 use std::sync::Arc;
 use std::time::Instant;
 use std::{fs, process, thread};
+
+use crate::settings::Settings;
+
+/// Prints the program banner with version information.
+fn print_banner() {
+    println!(
+        "{} {}\n$ git clone {}",
+        defaults::PROGRAM_NAME,
+        defaults::VERSION,
+        defaults::SOURCE_REPOSITORY
+    );
+}
 
 /// Program entrypoint.
 fn main() -> process::ExitCode {
@@ -62,10 +74,6 @@ fn main() -> process::ExitCode {
     settings.print();
     println!();
 
-    run_backend_loop(settings)
-}
-
-fn run_backend_loop(settings: settings::Settings) -> process::ExitCode {
     let gpio = match Gpio::new() {
         Ok(g) => g,
         Err(e) => {
@@ -85,12 +93,25 @@ fn run_backend_loop(settings: settings::Settings) -> process::ExitCode {
         }
     };
 
-    let client = Arc::new(Client::new());
-    let mut backends: Vec<Box<dyn notifications::Notifier>> = Vec::new();
+    let notifiers = build_notifiers(&settings, Arc::new(Client::new()));
+
+    if notifiers.is_empty() && !settings.dry_run {
+        eprintln!("[!] No notifiers are configured.");
+        return process::ExitCode::from(defaults::exit_codes::NO_NOTIFIERS_CONFIGURED);
+    }
+
+    run_loop(pin, notifiers, settings)
+}
+
+fn build_notifiers(
+    settings: &Settings,
+    client: Arc<Client>,
+) -> Vec<Box<dyn notifications::Notifier>> {
+    let mut notifiers: Vec<Box<dyn notifications::Notifier>> = Vec::new();
 
     if settings.slack.enabled {
         for url in &settings.slack.urls {
-            let backend = notifications::TwoLevelNotifier::new(
+            let notifier = notifications::TwoLevelNotifier::new(
                 backend::slack::SlackBackend,
                 url,
                 Arc::clone(&client),
@@ -99,13 +120,14 @@ fn run_backend_loop(settings: settings::Settings) -> process::ExitCode {
                 &settings.slack.alarm_message_template_body,
                 &settings.slack.restored_message_template_body,
             );
-            backends.push(Box::new(backend));
+
+            notifiers.push(Box::new(notifier));
         }
     }
 
     if settings.batsign.enabled {
         for url in &settings.batsign.urls {
-            let backend = notifications::TwoLevelNotifier::new(
+            let notifier = notifications::TwoLevelNotifier::new(
                 backend::batsign::BatsignBackend,
                 url,
                 Arc::clone(&client),
@@ -114,14 +136,19 @@ fn run_backend_loop(settings: settings::Settings) -> process::ExitCode {
                 &settings.batsign.alarm_message_template_body,
                 &settings.batsign.restored_message_template_body,
             );
-            backends.push(Box::new(backend));
+
+            notifiers.push(Box::new(notifier));
         }
     }
 
-    if backends.is_empty() && !settings.dry_run {
-        return process::ExitCode::FAILURE;
-    }
+    notifiers
+}
 
+fn run_loop(
+    pin: InputPin,
+    mut notifiers: Vec<Box<dyn notifications::Notifier>>,
+    settings: Settings,
+) -> process::ExitCode {
     let mut low_since: Option<Instant> = None;
     let mut high_since: Option<Instant> = None;
     let mut seen_high = false;
@@ -151,10 +178,10 @@ fn run_backend_loop(settings: settings::Settings) -> process::ExitCode {
                     dry_run: settings.dry_run,
                 };
 
-                for b in backends.iter_mut() {
-                    println!("{}", b.name());
+                for n in notifiers.iter_mut() {
+                    println!("{}", n.name());
 
-                    match b.send_notification(&ctx) {
+                    match n.send_notification(&ctx) {
                         notifications::NotificationResult::NotYetTime => {}
                         notifications::NotificationResult::DryRun => {}
                         notifications::NotificationResult::Success(status) => {
@@ -190,10 +217,10 @@ fn run_backend_loop(settings: settings::Settings) -> process::ExitCode {
                     dry_run: settings.dry_run,
                 };
 
-                for b in backends.iter_mut() {
-                    println!("{}", b.name());
+                for n in notifiers.iter_mut() {
+                    println!("{}", n.name());
 
-                    match b.send_notification(&ctx) {
+                    match n.send_notification(&ctx) {
                         notifications::NotificationResult::NotYetTime => {}
                         notifications::NotificationResult::DryRun => {}
                         notifications::NotificationResult::Success(status) => {
@@ -208,7 +235,7 @@ fn run_backend_loop(settings: settings::Settings) -> process::ExitCode {
                     }
                 }
 
-                if settings.dry_run && backends.is_empty() {
+                if settings.dry_run && notifiers.is_empty() {
                     // In dry run mode, we consider the notification "successful" even if there are no backends configured, since the user just wants to see what would happen.
                     seen_high = true;
                 }
@@ -220,8 +247,9 @@ fn run_backend_loop(settings: settings::Settings) -> process::ExitCode {
 }
 
 /// Initializes the settings by loading defaults, applying the config file, and then applying CLI overrides. If the `--save` flag is set, it saves the resolved configuration back to disk and exits.
-fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode> {
-    let mut settings = settings::Settings::default();
+fn init_settings(cli: &cli::Cli) -> Result<Settings, process::ExitCode> {
+    let mut settings = Settings::default();
+
     if let Err(e) = settings.inherit_config_dir(&cli.config_dir) {
         eprintln!("[!] Error resolving default configuration directory: {}", e);
         return Err(process::ExitCode::from(
@@ -373,14 +401,4 @@ fn init_settings(cli: &cli::Cli) -> Result<settings::Settings, process::ExitCode
     }
 
     Ok(settings)
-}
-
-/// Prints the program banner with version information.
-fn print_banner() {
-    println!(
-        "{} {}\n$ git clone {}",
-        defaults::PROGRAM_NAME,
-        defaults::VERSION,
-        defaults::SOURCE_REPOSITORY
-    );
 }

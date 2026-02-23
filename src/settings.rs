@@ -356,6 +356,10 @@ impl Settings {
         self.slack.sanity_check(&mut vec);
         self.batsign.sanity_check(&mut vec);
 
+        if !self.slack.enabled && !self.batsign.enabled {
+            vec.push("At least one notifier backend must be enabled.".to_string());
+        }
+
         if vec.is_empty() { Ok(()) } else { Err(vec) }
     }
 
