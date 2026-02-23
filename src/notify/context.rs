@@ -8,7 +8,4 @@ pub struct Context {
 
     /// The current timestamp when the notification is being processed, used for timing logic in the notifiers.
     pub now: Instant,
-
-    /// Indicates whether the notification should be sent as a dry run (i.e., printed to the console instead of actually sending it).
-    pub dry_run: bool,
 }

@@ -116,6 +116,7 @@ fn build_notifiers(settings: &Settings) -> Vec<Box<dyn notify::Notifier>> {
                 settings.slack.retry_interval,
                 &settings.slack.alarm_message_template_body,
                 &settings.slack.restored_message_template_body,
+                settings.dry_run,
             );
 
             notifiers.push(Box::new(slack));
@@ -130,6 +131,7 @@ fn build_notifiers(settings: &Settings) -> Vec<Box<dyn notify::Notifier>> {
                 settings.batsign.retry_interval,
                 &settings.batsign.alarm_message_template_body,
                 &settings.batsign.restored_message_template_body,
+                settings.dry_run,
             );
 
             notifiers.push(Box::new(batsign));
@@ -171,7 +173,6 @@ fn run_loop(
                 let ctx = notify::Context {
                     level: Level::Low,
                     now,
-                    dry_run: settings.dry_run,
                 };
 
                 for n in notifiers.iter_mut() {
@@ -204,10 +205,9 @@ fn run_loop(
 
                 low_since = None;
 
-                let ctx = notify::context::Context {
+                let ctx = notify::Context {
                     level: Level::High,
                     now,
-                    dry_run: settings.dry_run,
                 };
 
                 for n in notifiers.iter_mut() {

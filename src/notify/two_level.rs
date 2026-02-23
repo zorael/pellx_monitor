@@ -16,6 +16,9 @@ pub struct TwoLevelNotifier<B: Backend> {
 
     /// The `LevelNotifier` responsible for managing notifications when the GPIO level is Low (restored state).
     restored: LevelNotifier,
+
+    /// Indicates whether the notifier should operate in dry run mode, where notifications are printed to the console instead of being sent via the backend.
+    dry_run: bool,
 }
 
 impl<B: Backend> Notifier for TwoLevelNotifier<B> {
@@ -38,11 +41,13 @@ impl<B: Backend> TwoLevelNotifier<B> {
         retry_interval: Duration,
         alarm_template: &str,
         restored_template: &str,
+        dry_run: bool,
     ) -> Self {
         Self {
             backend,
             alarm: LevelNotifier::new(Level::High, alarm_template, repeat_interval, retry_interval),
             restored: LevelNotifier::new(Level::Low, restored_template, None, retry_interval),
+            dry_run,
         }
     }
 
@@ -64,7 +69,7 @@ impl<B: Backend> TwoLevelNotifier<B> {
 
         let msg = self.backend.build_message(ln.level, &ln.message_template);
 
-        if ctx.dry_run {
+        if self.dry_run {
             println!("[{}] DRY RUN:\n{}\n", self.backend.name(), msg);
             return NotificationResult::DryRun;
         }
