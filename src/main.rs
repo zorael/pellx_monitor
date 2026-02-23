@@ -51,7 +51,12 @@ fn main() -> process::ExitCode {
             eprintln!("  * {error}");
         }
 
-        return process::ExitCode::from(defaults::exit_codes::CONFIGURATION_ERROR);
+        if settings.dry_run {
+            println!("[!] Continuing anyway because --dry-run is set.");
+            println!();
+        } else {
+            return process::ExitCode::from(defaults::exit_codes::CONFIGURATION_ERROR);
+        }
     }
 
     settings.print();
@@ -149,9 +154,18 @@ fn run_backend_loop(settings: settings::Settings) -> process::ExitCode {
                 for b in backends.iter_mut() {
                     println!("{}", b.name());
 
-                    if let Some(results) = b.send_notification(&ctx) {
-                        println!("{}", results.num_succeeded);
-                        println!("{}", results.num_failed);
+                    match b.send_notification(&ctx) {
+                        notifications::NotificationResult::NotYetTime => {}
+                        notifications::NotificationResult::DryRun => {}
+                        notifications::NotificationResult::Success(status) => {
+                            println!("Success: HTTP {}", status);
+                        }
+                        notifications::NotificationResult::Failure(status) => {
+                            println!("Failure: HTTP {}", status);
+                        }
+                        notifications::NotificationResult::Error(e) => {
+                            println!("Error: {e}");
+                        }
                     }
                 }
             }
@@ -179,16 +193,17 @@ fn run_backend_loop(settings: settings::Settings) -> process::ExitCode {
                 for b in backends.iter_mut() {
                     println!("{}", b.name());
 
-                    if let Some(results) = b.send_notification(&ctx) {
-                        println!("{}", results.num_succeeded);
-                        println!("{}", results.num_failed);
-
-                        if results.num_succeeded > 0 {
-                            // Only count this as having "seen" a HIGH if we
-                            // successfully sent at least one notification about it,
-                            // to avoid weird edge cases where the pin is HIGH but
-                            // we can't reach the notification endpoints for some reason.
-                            seen_high = true;
+                    match b.send_notification(&ctx) {
+                        notifications::NotificationResult::NotYetTime => {}
+                        notifications::NotificationResult::DryRun => {}
+                        notifications::NotificationResult::Success(status) => {
+                            println!("Success: HTTP {}", status);
+                        }
+                        notifications::NotificationResult::Failure(status) => {
+                            println!("Failure: HTTP {}", status);
+                        }
+                        notifications::NotificationResult::Error(e) => {
+                            println!("Error: {e}");
                         }
                     }
                 }

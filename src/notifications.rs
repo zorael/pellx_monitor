@@ -8,7 +8,7 @@ use crate::backend;
 
 pub trait Notifier {
     fn name(&self) -> &'static str;
-    fn send_notification(&mut self, ctx: &Context) -> Option<NotificationResults>;
+    fn send_notification(&mut self, ctx: &Context) -> NotificationResult;
 }
 
 #[derive(Debug)]
@@ -18,10 +18,12 @@ pub struct Context {
     pub dry_run: bool,
 }
 
-#[derive(Default)]
-pub struct NotificationResults {
-    pub num_succeeded: usize,
-    pub num_failed: usize,
+pub enum NotificationResult {
+    NotYetTime,
+    DryRun,
+    Success(reqwest::StatusCode),
+    Failure(reqwest::StatusCode),
+    Error(reqwest::Error),
 }
 
 struct LevelNotifier {
@@ -107,38 +109,34 @@ impl<B: backend::Backend> TwoLevelNotifier<B> {
         url: &str,
         ctx: &Context,
         ln: &mut LevelNotifier,
-    ) -> Option<NotificationResults> {
+    ) -> NotificationResult {
         if !ln.should_send_now(ctx.now) {
-            return None;
+            return NotificationResult::NotYetTime;
         }
 
         let message = backend.build_message(ln.level, &ln.message_template);
 
         if ctx.dry_run {
             println!("[{}] DRY RUN to {}:\n{}\n", backend.name(), url, message);
-            return None;
+            return NotificationResult::DryRun
         }
-
-        let mut results = NotificationResults::default();
 
         match backend.send_via_backend(&client, url, message) {
             Ok(status) if status.is_success() => {
-                results.num_succeeded += 1;
                 ln.record_success(ctx.now);
+                NotificationResult::Success(status)
             }
             Ok(status) => {
                 eprintln!("[!] {} returned HTTP {}", backend.name(), status);
-                results.num_failed += 1;
                 ln.record_failure(ctx.now);
+                NotificationResult::Failure(status)
             }
             Err(e) => {
                 eprintln!("[!] Could not reach {}: {e}", backend.name());
-                results.num_failed += 1;
                 ln.record_failure(ctx.now);
+                NotificationResult::Error(e)
             }
         }
-
-        Some(results)
     }
 }
 
@@ -147,7 +145,7 @@ impl<B: backend::Backend> Notifier for TwoLevelNotifier<B> {
         self.backend.name()
     }
 
-    fn send_notification(&mut self, ctx: &Context) -> Option<NotificationResults> {
+    fn send_notification(&mut self, ctx: &Context) -> NotificationResult {
         let ln = match ctx.level {
             Level::Low => &mut self.restored,
             Level::High => &mut self.alarm,
