@@ -1,6 +1,6 @@
 [package]
 name = "pellx_monitor"
-version = "0.0.1"
+version = "0.0.2"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/zorael/pellx_monitor"
 edition = "2024"
