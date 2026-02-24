@@ -30,9 +30,9 @@ impl super::Backend for BatsignBackend {
     fn name(&self) -> String {
         // This can be cached if it turns out to be a hotspot.
         format!(
-            "batsign#{} ({})",
+            "batsign#{}:{}",
             self.id,
-            get_email_from_batsign_url(&self.url).unwrap_or("unknown email")
+            get_email_from_batsign_url(&self.url).unwrap_or("(failed to parse email)")
         )
     }
 
