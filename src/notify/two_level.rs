@@ -1,23 +1,26 @@
+use rppal::gpio::Level;
+use std::time::Duration;
+
 use crate::backend::Backend;
 use crate::notify::Context;
 use crate::notify::LevelNotifier;
 use crate::notify::NotificationResult;
 use crate::notify::Notifier;
-use rppal::gpio::Level;
-use std::time::Duration;
 
-/// A notifier that manages two levels of notifications (alarm and restored) using a specified backend, handling the logic for when to send notifications based on the GPIO level and timing.
+/// A notifier that manages two levels of notifications (alarm and restored)
+/// using a specified backend, handling the logic for when to send notifications
+/// based on the GPIO level and timing.
 pub struct TwoLevelNotifier<B: Backend> {
     /// The backend used to send notifications (e.g., Slack or Batsign).
     backend: B,
 
-    /// The `LevelNotifier` responsible for managing notifications when the GPIO level is High (alarm state).
+    /// The `LevelNotifier` responsible for managing notifications in alarm states.
     alarm: LevelNotifier,
 
-    /// The `LevelNotifier` responsible for managing notifications when the GPIO level is Low (restored state).
+    /// The `LevelNotifier` responsible for managing notifications in restored states.
     restored: LevelNotifier,
 
-    /// Indicates whether the notifier should operate in dry run mode, where notifications are printed to the console instead of being sent via the backend.
+    /// Indicates whether the notifier should operate in dry run mode.
     dry_run: bool,
 }
 
@@ -27,7 +30,8 @@ impl<B: Backend> Notifier for TwoLevelNotifier<B> {
         self.name()
     }
 
-    /// Sends a notification based on the current GPIO level and the configured backend, while managing timing for repeats and retries.
+    /// Sends a notification based on the current GPIO level and the
+    /// configured backend, while managing timing for repeats and retries.
     fn send_notification(&mut self, ctx: &Context) -> NotificationResult {
         TwoLevelNotifier::send_notification(self, ctx)
     }
@@ -56,7 +60,8 @@ impl<B: Backend> TwoLevelNotifier<B> {
         self.backend.name()
     }
 
-    /// Sends a notification based on the current GPIO level and the configured backend, while managing timing for repeats and retries.
+    /// Sends a notification based on the current GPIO level and the
+    /// configured backend, while managing timing for repeats and retries.
     pub fn send_notification(&mut self, ctx: &Context) -> NotificationResult {
         let ln = match ctx.level {
             Level::Low => &mut self.restored,

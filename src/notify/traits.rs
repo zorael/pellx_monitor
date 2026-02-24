@@ -3,7 +3,8 @@ use crate::notify::NotificationResult;
 
 /// Defines the `Notifier` trait.
 pub trait Notifier {
-    /// Returns the name of the notifier, which is typically the name of the backend it uses (e.g., "slack" or "batsign").
+    /// Returns the name of the notifier, which is typically the name of the backend
+    /// it uses (e.g., "slack" or "batsign") plus potentially any other identifier.
     fn name(&self) -> String;
 
     /// Sends a notification.

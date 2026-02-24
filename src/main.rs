@@ -1,3 +1,18 @@
+//! Monitor and error-reporter of a PellX pellets burner.
+//!
+//! This programs is intended to be run on a Raspberry Pi (or equivalent) with
+//! GPIO pins connected to the terminal block of the pellets burner's control board.
+//! When the burner is in an error state, it will pull the pin on the Pi HIGH,
+//! signaling that an "alarm" notification should be sent. When the error is resolved,
+//! the pin is pulled LOW, and a "restored" notification is sent.
+//!
+//! The program supports multiple backends for sending notifications; so far as
+//! Slack messages and Batsign emails. It is designed to be extensible.
+//!
+//! The program can be configured with a mix of a configuration file and command-line
+//! arguments. CLI arguments override config file settings but are not exhaustive;
+//! some thinsg must be set in file.
+
 mod backend;
 mod cli;
 mod defaults;
@@ -103,7 +118,8 @@ fn main() -> process::ExitCode {
     run_loop(pin, notifiers, settings)
 }
 
-/// Builds the list of notifiers based on the resolved settings, creating instances of `TwoLevelNotifier` for each enabled backend (Slack and Batsign) with the appropriate configuration.
+/// Builds the list of notifiers based on the resolved settings, creating instances
+/// of `TwoLevelNotifier` for each enabled backend (Slack and Batsign) with the appropriate configuration.
 fn build_notifiers(settings: &Settings) -> Vec<Box<dyn notify::Notifier>> {
     let client = Arc::new(Client::new());
     let mut notifiers: Vec<Box<dyn notify::Notifier>> = Vec::new();
@@ -149,7 +165,8 @@ fn build_notifiers(settings: &Settings) -> Vec<Box<dyn notify::Notifier>> {
     notifiers
 }
 
-/// The main loop that monitors the GPIO pin and sends notifications based on the configured notifiers and settings.
+/// The main loop that monitors the GPIO pin and sends notifications
+/// based on the configured notifiers and settings.
 fn run_loop(
     pin: InputPin,
     mut notifiers: Vec<Box<dyn notify::Notifier>>,
@@ -230,7 +247,9 @@ fn run_loop(
                 }
 
                 if settings.dry_run && notifiers.is_empty() {
-                    // In dry run mode, we consider the notification "successful" even if there are no backends configured, since the user just wants to see what would happen.
+                    // In dry run mode, we consider the notification "successful"
+                    // even if there are no backends configured, since the user
+                    // just wants to see what would happen.
                     seen_high = true;
                 }
             }
@@ -240,7 +259,9 @@ fn run_loop(
     }
 }
 
-/// Initializes the settings by loading defaults, applying the config file, and then applying CLI overrides. If the `--save` flag is set, it saves the resolved configuration back to disk and exits.
+/// Initializes the settings by loading defaults, applying the config file,
+/// and then applying CLI overrides. If the `--save` flag is set, it saves the
+/// resolved configuration back to disk and exits.
 fn init_settings(cli: &cli::Cli) -> Result<Settings, process::ExitCode> {
     let mut settings = Settings::default();
 
@@ -253,7 +274,8 @@ fn init_settings(cli: &cli::Cli) -> Result<Settings, process::ExitCode> {
 
     if !settings.paths.config_dir.exists() && !cli.save {
         eprintln!(
-            "[!] Configuration directory {} does not exist. Create it or run with `--save` to generate default configuration and resources.",
+            "[!] Configuration directory {} does not exist. \
+            Create it or run with `--save` to generate default configuration and resources.",
             settings.paths.config_dir.display()
         );
         return Err(process::ExitCode::from(
@@ -294,7 +316,8 @@ fn init_settings(cli: &cli::Cli) -> Result<Settings, process::ExitCode> {
 
     if !cli.save && config.is_none() {
         eprintln!(
-            "[!] No configuration file found at {}. Create it or run with `--save` to generate default configuration and resources.",
+            "[!] No configuration file found at {}. \
+            Create it or run with `--save` to generate default configuration and resources.",
             settings.paths.config_file.display()
         );
         return Err(process::ExitCode::from(

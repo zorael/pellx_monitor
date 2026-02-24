@@ -115,7 +115,7 @@ impl Default for FileConfig {
 }
 
 impl From<&Settings> for FileConfig {
-    /// Converts the resolved settings into a FileConfig, which can be saved to disk. This is used when the user wants to save the current configuration.
+    /// Converts the resolved settings into a FileConfig, which can be saved to disk.
     fn from(s: &Settings) -> Self {
         Self {
             gpio: GpioConfig {
@@ -141,7 +141,7 @@ impl From<&Settings> for FileConfig {
     }
 }
 
-/// Deserializes the configuration file from disk, returning an optional FileConfig. This is used to load the configuration file at startup.
+/// Deserializes the configuration file from disk, returning an optional FileConfig.
 pub fn deserialize_config_file(
     config_file: &PathBuf,
 ) -> Result<Option<FileConfig>, confy::ConfyError> {
@@ -155,7 +155,7 @@ pub fn deserialize_config_file(
     }
 }
 
-/// Resolves the configuration directory path, returning the directory as a string and an optional PathBuf. This is used for operations that need to know the config directory, such as saving the config file.
+/// Resolves the configuration directory path, returning the directory as a string and an optional PathBuf.
 pub fn resolve_default_config_directory_from_env() -> Result<PathBuf, String> {
     if let Some(path) = env::var_os("PELLX_MONITOR_CONFIG_DIR").map(PathBuf::from) {
         return Ok(path);

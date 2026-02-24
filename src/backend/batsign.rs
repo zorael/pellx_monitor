@@ -41,7 +41,8 @@ impl super::Backend for BatsignBackend {
         template.to_owned()
     }
 
-    /// Sends a notification via the Batsign backend by making a POST request to the specified URL with the message as the body.
+    /// Sends a notification via the Batsign backend by making a POST request
+    /// to the specified URL with the message as the body.
     fn send_message(&mut self, message: &str) -> Result<(), String> {
         match self.client.post(&self.url).body(message.to_owned()).send() {
             Ok(resp) if resp.status().is_success() => Ok(()),

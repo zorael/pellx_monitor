@@ -15,7 +15,7 @@ pub struct SlackBackend {
 }
 
 impl SlackBackend {
-    /// Creates a new instance of the SlackBackend with the provided HTTP client and Slack webhook URL.
+    /// Creates a new instance of SlackBackend.
     pub fn new(id: usize, client: Arc<Client>, url: &str) -> Self {
         Self {
             id,
@@ -32,12 +32,13 @@ impl super::Backend for SlackBackend {
         format!("slack#{}", self.id)
     }
 
-    /// Builds the message to be sent via Slack by formatting the provided template with an appropriate emoji based on the GPIO level (error emoji for high level and success emoji for low level).
+    /// Builds the message to be sent via Slack.
     fn build_message(&self, _level: Level, template: &str) -> String {
         serde_json::json!({ "text": format!("{template}") }).to_string()
     }
 
-    /// Sends a notification via the Slack backend by making a POST request to the specified URL with the message as a JSON payload.
+    /// Sends a notification via the Slack backend by making a POST request
+    /// to the specified URL with the message as a JSON payload.
     fn send_message(&mut self, message: &str) -> Result<(), String> {
         let json: serde_json::Value = serde_json::from_str(message).expect("internal slack json");
 

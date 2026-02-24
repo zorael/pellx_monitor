@@ -3,7 +3,7 @@ pub mod slack;
 
 use rppal::gpio::Level;
 
-/// Backend owns everything it needs (urls, client, command, etc.).
+/// Defines the `Backend` trait, which is implemented by all notification backends (e.g., Slack, Batsign).
 pub trait Backend {
     /// Returns the name of the backend, which is used for logging and identification purposes.
     fn name(&self) -> String;

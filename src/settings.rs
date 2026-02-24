@@ -125,7 +125,9 @@ impl SlackSettings {
         self.urls = trim_vec_of_strings(&self.urls);
     }
 
-    /// Sanity check the Slack settings, returning true if they are valid and false if any issues are found. This is used to validate the settings before starting the monitoring loop.
+    /// Sanity check the Slack settings, returning true if they are valid
+    /// and false if any issues are found. This is used to validate the settings
+    /// before starting the monitoring loop.
     fn sanity_check(&self, vec: &mut Vec<String>) {
         if self.notification_interval == Duration::ZERO {
             vec.push("Slack notifications interval must be non-zero.".to_string());
@@ -223,7 +225,9 @@ impl BatsignSettings {
         self.urls = trim_vec_of_strings(&self.urls);
     }
 
-    /// Sanity check the Batsign settings, returning true if they are valid and false if any issues are found. This is used to validate the settings before starting the monitoring loop.
+    /// Sanity check the Batsign settings, returning true if they are valid
+    /// and false if any issues are found. This is used to validate the settings
+    /// before starting the monitoring loop.
     fn sanity_check(&self, vec: &mut Vec<String>) {
         if self.notification_interval == Duration::ZERO {
             vec.push("Batsign notifications interval must be non-zero.".to_string());
@@ -277,7 +281,7 @@ pub struct PathBufs {
 }
 
 impl Default for PathBufs {
-    /// Default values for the resource paths, which are empty and will be resolved at runtime based on the config directory.
+    /// Default values for the resource paths.
     fn default() -> Self {
         Self {
             config_dir: PathBuf::new(),
@@ -327,7 +331,9 @@ impl Default for Settings {
 }
 
 impl Settings {
-    /// Applies the configuration directory setting, resolving the resource paths based on the provided directory or the default. This is used to set up the resource paths before loading resources from disk.
+    /// Applies the configuration directory setting, resolving the resource paths
+    /// based on the provided directory or the default. This is used to set up
+    /// the resource paths before loading resources from disk.
     pub fn inherit_config_dir(&mut self, config_dir: &Option<String>) -> Result<(), String> {
         if let Some(dir) = config_dir {
             self.paths.config_dir = PathBuf::from(dir);
@@ -422,7 +428,7 @@ impl Settings {
         }
     }
 
-    /// Resolves the resource paths based on the config directory. This is used to set up the resource paths before loading resources from disk.
+    /// Resolves the resource paths based on the config directory.
     pub fn resolve_resource_paths(&mut self) {
         self.paths.config_file = self.paths.config_dir.join(defaults::CONFIG_FILENAME);
 
@@ -447,7 +453,8 @@ impl Settings {
             .join(defaults::batsign::RESTORED_MESSAGE_TEMPLATE_FILENAME);
     }
 
-    /// Loads the Batsign URLs and message templates from disk, returning an error if any of the files cannot be read. This is used to load the resources after resolving the resource paths.
+    /// Loads the Batsign URLs and message templates from disk,
+    /// returning an error if any of the files cannot be read.
     pub fn load_resources_from_disk(&mut self) -> Vec<(PathBuf, io::Error)> {
         let mut vec = Vec::new();
 
@@ -487,7 +494,8 @@ impl Settings {
 
     /// Applies CLI settings, returning the resulting settings.
     pub fn apply_cli(&mut self, cli: &Cli) {
-        // Config directory is applied separately in `inherit_config_dir` because it affects how other settings are loaded from disk.
+        // Config directory is applied separately in `inherit_config_dir`
+        //because it affects how other settings are loaded from disk.
         self.dry_run = cli.dry_run;
         self.debug = cli.debug;
     }
