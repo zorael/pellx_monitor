@@ -1,3 +1,13 @@
+//! Application settings, including defaults and sanity checks.
+//!
+//! This module defines the `-Settings` structs, which contain all the runtime
+//! configuration settings for different parts of the application; `GpioSettings`,
+//! `SlackSettings`, `BatsignSettings`, `PathBufs` and the main `Settings`.
+//!
+//! Structs are first populated by applying default values, then by applying
+//! overrides from the configuration file, and finally applying what was read
+//! on the command-line.
+
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -7,6 +17,7 @@ use crate::cli::Cli;
 use crate::defaults;
 use crate::file_config;
 
+/// GPIO settings, including pin number, poll interval, and hold time.
 #[derive(Debug, Serialize)]
 pub struct GpioSettings {
     /// GPIO pin number to monitor.
@@ -63,6 +74,7 @@ impl GpioSettings {
     }
 }
 
+/// Slack settings.
 #[derive(Debug, Serialize)]
 pub struct SlackSettings {
     /// Whether Slack notifications are enabled.
@@ -161,6 +173,7 @@ impl SlackSettings {
     }
 }
 
+/// Batsign settings.
 #[derive(Debug, Serialize)]
 pub struct BatsignSettings {
     /// Whether Batsign notifications are enabled.
@@ -259,6 +272,7 @@ impl BatsignSettings {
     }
 }
 
+/// Paths to resources, resolved at runtime.
 #[derive(Debug, Serialize)]
 pub struct PathBufs {
     /// Path to the configuration directory, which contains the configuration file and other resources.
