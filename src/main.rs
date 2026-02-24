@@ -110,7 +110,7 @@ fn build_notifiers(settings: &Settings) -> Vec<Box<dyn notify::Notifier>> {
 
     if settings.slack.enabled {
         for (i, url) in settings.slack.urls.iter().enumerate() {
-            let slack = notify::TwoLevelNotifier::new(
+            let n = notify::TwoLevelNotifier::new(
                 backend::slack::SlackBackend::new(i, Arc::clone(&client), url),
                 Some(settings.slack.notification_interval),
                 settings.slack.retry_interval,
@@ -119,13 +119,17 @@ fn build_notifiers(settings: &Settings) -> Vec<Box<dyn notify::Notifier>> {
                 settings.dry_run,
             );
 
-            notifiers.push(Box::new(slack));
+            if settings.debug {
+                println!("{}: initialized with URL {}", n.name(), url);
+            }
+
+            notifiers.push(Box::new(n));
         }
     }
 
     if settings.batsign.enabled {
         for (i, url) in settings.batsign.urls.iter().enumerate() {
-            let batsign = notify::TwoLevelNotifier::new(
+            let n = notify::TwoLevelNotifier::new(
                 backend::batsign::BatsignBackend::new(i, Arc::clone(&client), url),
                 Some(settings.batsign.notification_interval),
                 settings.batsign.retry_interval,
@@ -134,7 +138,11 @@ fn build_notifiers(settings: &Settings) -> Vec<Box<dyn notify::Notifier>> {
                 settings.dry_run,
             );
 
-            notifiers.push(Box::new(batsign));
+            if settings.debug {
+                println!("{}: initialized with URL {}", n.name(), url);
+            }
+
+            notifiers.push(Box::new(n));
         }
     }
 
@@ -176,8 +184,6 @@ fn run_loop(
                 };
 
                 for n in notifiers.iter_mut() {
-                    println!("{}", n.name());
-
                     match n.send_notification(&ctx) {
                         notify::NotificationResult::NotYetTime => {}
                         notify::NotificationResult::DryRun => {}
@@ -211,8 +217,6 @@ fn run_loop(
                 };
 
                 for n in notifiers.iter_mut() {
-                    println!("{}", n.name());
-
                     match n.send_notification(&ctx) {
                         notify::NotificationResult::NotYetTime => {}
                         notify::NotificationResult::DryRun => {}
