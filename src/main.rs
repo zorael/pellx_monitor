@@ -239,6 +239,7 @@ fn run_loop(
                         notify::NotificationResult::DryRun => {}
                         notify::NotificationResult::Success => {
                             println!("{}: success", n.name());
+                            seen_high = true;
                         }
                         notify::NotificationResult::Failure(message) => {
                             println!("{}: failure: {message}", n.name());
