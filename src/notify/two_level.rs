@@ -71,6 +71,7 @@ impl<B: Backend> TwoLevelNotifier<B> {
 
         if self.dry_run {
             println!("[{}] DRY RUN:\n{}\n", self.backend.name(), msg);
+            ln.record_success(ctx.now);
             return NotificationResult::DryRun;
         }
 
