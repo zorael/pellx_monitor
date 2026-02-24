@@ -1,7 +1,9 @@
+pub use std::time::Duration;
+
 use constcat::concat;
 
 pub mod gpio {
-    use std::time::Duration;
+    use super::*;
 
     /// GPIO pin number to monitor.
     pub const PIN_NUMBER: u8 = 24;
@@ -14,7 +16,7 @@ pub mod gpio {
 }
 
 pub mod slack {
-    use std::time::Duration;
+    use super::*;
 
     /// Resource file name for the Slack alarm message template.
     pub const ALARM_MESSAGE_TEMPLATE_FILENAME: &str = "slack_alarm.txt";
@@ -37,7 +39,7 @@ pub mod slack {
 }
 
 pub mod batsign {
-    use std::time::Duration;
+    use super::*;
 
     /// Resource file name for the alarm message template.
     pub const ALARM_MESSAGE_TEMPLATE_FILENAME: &str = "batsign_alarm.txt";
