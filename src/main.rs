@@ -205,10 +205,10 @@ fn run_loop(
                         notify::NotificationResult::NotYetTime => {}
                         notify::NotificationResult::DryRun => {}
                         notify::NotificationResult::Success => {
-                            println!("{}: success", n.name());
+                            println!("{}: restored success", n.name());
                         }
                         notify::NotificationResult::Failure(message) => {
-                            println!("{}: failure: {message}", n.name());
+                            println!("{}: restored failure: {message}", n.name());
                         }
                     }
                 }
@@ -238,11 +238,11 @@ fn run_loop(
                         notify::NotificationResult::NotYetTime => {}
                         notify::NotificationResult::DryRun => {}
                         notify::NotificationResult::Success => {
-                            println!("{}: success", n.name());
+                            println!("{}: alarm success", n.name());
                             seen_high = true;
                         }
                         notify::NotificationResult::Failure(message) => {
-                            println!("{}: failure: {message}", n.name());
+                            println!("{}: alarm failure: {message}", n.name());
                         }
                     }
                 }
