@@ -1,8 +1,14 @@
+//! Batsign backend for sending notifications via email using the Batsign service.
+//!
+//! This module defines the `BatsignBackend` struct, which implements the `Backend`///! trait for sending notifications to the Batsign service.
+//!
+//! The Batsign service allows sending email notifications by making HTTP POST
+//! requests to a specific URL format.
 use reqwest::blocking::Client;
 use rppal::gpio::Level;
 use std::sync::Arc;
 
-/// Defines the Batsign backend for sending notifications via email using the Batsign service.
+/// Batsign backend for sending notifications via the free Batsign service.
 pub struct BatsignBackend {
     /// Unique identifier for the Batsign backend instance, used for logging and identification purposes.
     id: usize,

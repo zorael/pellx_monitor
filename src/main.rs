@@ -30,6 +30,9 @@ use std::{fs, process, thread};
 use crate::settings::Settings;
 
 /// Prints the program banner with version information.
+///
+/// This just outputs a string with the program name, version, and source code
+/// repository URL.
 fn print_banner() {
     println!(
         "{} {}\n$ git clone {}",
@@ -118,8 +121,19 @@ fn main() -> process::ExitCode {
     run_loop(pin, notifiers, settings)
 }
 
-/// Builds the list of notifiers based on the resolved settings, creating instances
-/// of `TwoLevelNotifier` for each enabled backend (Slack and Batsign) with the appropriate configuration.
+/// Initialises and returns a `Vec` of notifiers.
+///
+/// Notifiers are instances of `TwoLevelNotifier` with a backend of either
+/// `SlackBackend` or `BatsignBackend`, depending on the resolved settings.
+/// Their settings must have been read into the `Settings` struct before
+/// calling this function.
+///
+/// # Example
+/// ```
+/// let settings = Settings::default();
+/// // ... apply config file and CLI overrides to settings ...
+/// let notifiers: Vec<Box<dyn notify::Notifier>> = build_notifiers(&settings);
+/// ```
 fn build_notifiers(settings: &Settings) -> Vec<Box<dyn notify::Notifier>> {
     let client = Arc::new(Client::new());
     let mut notifiers: Vec<Box<dyn notify::Notifier>> = Vec::new();
@@ -167,6 +181,17 @@ fn build_notifiers(settings: &Settings) -> Vec<Box<dyn notify::Notifier>> {
 
 /// The main loop that monitors the GPIO pin and sends notifications
 /// based on the configured notifiers and settings.
+///
+/// Notifiers must have been initialised before calling this function,
+/// and the GPIO pin must likewise have been set up as an input with pull-up.
+///
+/// # Example
+/// ```
+/// let gpio = Gpio::new().unwrap();
+/// let pin = gpio.get(settings.gpio.pin_number).unwrap().into_input_pullup();
+/// let notifiers = build_notifiers(&settings);
+/// run_loop(pin, notifiers, settings)
+/// ```
 fn run_loop(
     pin: InputPin,
     mut notifiers: Vec<Box<dyn notify::Notifier>>,
@@ -261,8 +286,18 @@ fn run_loop(
 }
 
 /// Initializes the settings by loading defaults, applying the config file,
-/// and then applying CLI overrides. If the `--save` flag is set, it saves the
-/// resolved configuration back to disk and exits.
+/// and then applying CLI overrides.
+///
+/// If the `--save` flag is set, it saves the resolved configuration back to disk and exits.
+///
+/// # Example
+/// ```
+/// let cli = cli::Cli::parse();
+/// let settings = match init_settings(&cli) {
+///     Ok(s) => s,
+///     Err(code) => return code,
+/// };
+/// ```
 fn init_settings(cli: &cli::Cli) -> Result<Settings, process::ExitCode> {
     let mut settings = Settings::default();
 
