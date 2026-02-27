@@ -73,4 +73,10 @@ impl LevelNotifier {
     pub fn record_failure(&mut self, now: Instant) {
         self.last_failed = Some(now);
     }
+
+    /// Resets the notifier's state, clearing both the last sent and last failed timestamps.
+    pub fn reset(&mut self) {
+        self.last_sent = None;
+        self.last_failed = None;
+    }
 }

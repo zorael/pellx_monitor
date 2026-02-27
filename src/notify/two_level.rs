@@ -63,31 +63,35 @@ impl<B: Backend> TwoLevelNotifier<B> {
     /// Sends a notification based on the current GPIO level and the
     /// configured backend, while managing timing for repeats and retries.
     pub fn send_notification(&mut self, ctx: &Context) -> NotificationResult {
-        let ln = match ctx.level {
-            Level::Low => &mut self.restored,
-            Level::High => &mut self.alarm,
+        let (current, other) = match ctx.level {
+            Level::Low => (&mut self.restored, &mut self.alarm),
+            Level::High => (&mut self.alarm, &mut self.restored),
         };
 
-        if !ln.should_send_now(ctx.now) {
+        if !current.should_send_now(ctx.now) {
             return NotificationResult::NotYetTime;
         }
 
-        let msg = self.backend.build_message(ln.level, &ln.message_template);
+        let msg = self
+            .backend
+            .build_message(current.level, &current.message_template);
 
         if self.dry_run {
             println!("[{}] DRY RUN:\n{}\n", self.backend.name(), msg);
-            ln.record_success(ctx.now);
+            current.record_success(ctx.now);
+            other.reset();
             return NotificationResult::DryRun;
         }
 
         match self.backend.send_message(&msg) {
             Ok(()) => {
-                ln.record_success(ctx.now);
+                current.record_success(ctx.now);
+                other.reset();
                 NotificationResult::Success
             }
             Err(e) => {
                 eprintln!("[!] {} failed: {e}", self.backend.name());
-                ln.record_failure(ctx.now);
+                current.record_failure(ctx.now);
                 NotificationResult::Failure(e)
             }
         }
