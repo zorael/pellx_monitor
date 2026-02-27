@@ -200,6 +200,8 @@ fn run_loop(
     let mut low_since: Option<Instant> = None;
     let mut high_since: Option<Instant> = None;
     let mut seen_high = false;
+    let mut printed_qualified_low = false;
+    let mut printed_qualified_high = false;
 
     loop {
         let now = Instant::now();
@@ -209,13 +211,15 @@ fn run_loop(
                 let start = low_since.get_or_insert(now);
                 let qualified = start.elapsed() >= settings.gpio.hold;
 
-                if settings.debug {
-                    println!("LOW");
-                }
-
                 if !qualified || !seen_high {
                     thread::sleep(settings.gpio.poll_interval);
                     continue;
+                }
+
+                if settings.debug && !printed_qualified_low {
+                    println!("Level::LOW");
+                    printed_qualified_low = true;
+                    printed_qualified_high = false;
                 }
 
                 high_since = None;
@@ -242,13 +246,15 @@ fn run_loop(
                 let start = high_since.get_or_insert(now);
                 let qualified = start.elapsed() >= settings.gpio.hold;
 
-                if settings.debug {
-                    println!("HIGH");
-                }
-
                 if !qualified {
                     thread::sleep(settings.gpio.poll_interval);
                     continue;
+                }
+
+                if settings.debug && !printed_qualified_high {
+                    println!("Level::HIGH");
+                    printed_qualified_high = true;
+                    printed_qualified_low = false;
                 }
 
                 low_since = None;
